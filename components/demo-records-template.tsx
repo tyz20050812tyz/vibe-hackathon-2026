@@ -150,7 +150,12 @@ export function DemoRecordsTemplate({
               <span>由 Zod 校验，最多 500 个字符</span>
               <span>{content.length}/500</span>
             </div>
-            <Button className="mt-6 w-full bg-[#183028] text-white hover:bg-[#2e4c3e]" size="lg" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              className="mt-6 w-full bg-[#183028] text-white hover:bg-[#2e4c3e]"
+              size="lg"
+              disabled={isSubmitting}
+            >
               {isSubmitting ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Send className="size-4" aria-hidden="true" />}
               {isSubmitting ? "正在写入..." : "写入 Supabase"}
             </Button>
