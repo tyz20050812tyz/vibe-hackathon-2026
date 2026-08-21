@@ -135,19 +135,19 @@ values
     'generative-art', 'collection', 'Generative Art', 'Rules, randomness, and visual form',
     '["书外之遇编辑部"]'::jsonb, 2026,
     '围绕 AI、算法、随机性和视觉表达策展，连接人工智能、设计和当代艺术的不同读法。',
-    null, '数字展柜 E-02', 'online', null, true
+    'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=800&q=80', '数字展柜 E-02', 'online', null, true
   ),
   (
     'cities-and-memory', 'collection', 'Cities and Memory', 'Reading the city through stories and images',
     '["书外之遇编辑部"]'::jsonb, 2026,
     '把城市研究、文学与摄影放在同一条阅读路径中，观察空间如何保存个人和集体记忆。',
-    null, '数字展柜 E-04', 'online', null, true
+    'https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=800&q=80', '数字展柜 E-04', 'online', null, true
   ),
   (
     'happy-accidents', 'collection', 'Happy Accidents', 'A collection for productive detours',
     '["书外之遇编辑部"]'::jsonb, 2026,
     '从小说、哲学和分类学中挑选意外相遇的文本，为第二阶段的探索关系保留起点。',
-    null, '数字展柜 E-06', 'online', null, true
+    'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?auto=format&fit=crop&w=800&q=80', '数字展柜 E-06', 'online', null, true
   )
 on conflict (slug) do update set
   type = excluded.type,
