@@ -1,7 +1,9 @@
 -- Curated demo catalog for the "Beyond the Shelf" first phase.
 -- Run in order after:
 -- 1. 20260821_create_library_foundation.sql
--- 2. 20260821_add_resource_catalog_search.sql
+-- 2. 202608210001_add_resource_catalog_search.sql
+-- The UI-only "演示资料" label and Mock catalog live in PR #11;
+-- this seed intentionally does not add an isDemo field to the API contract.
 -- The script is idempotent and contains no user data.
 
 insert into public.tags (name, slug, category)
@@ -49,7 +51,7 @@ values
     'the-creative-mind', 'book', 'The Creative Mind', 'Myths and Mechanisms',
     '["Margaret A. Boden"]'::jsonb, 2004,
     '解释组合、探索与变革三类创造力机制，帮助读者区分生成结果与创造过程。',
-    null, null, 'online', 'https://mitpress.mit.edu/9780262525432/the-creative-mind/', true
+    null, null, 'online', 'https://www.routledge.com/The-Creative-Mind-Myths-and-Mechanisms/Boden/p/book/9780415314527', true
   ),
   (
     'ways-of-seeing', 'book', 'Ways of Seeing', null,
