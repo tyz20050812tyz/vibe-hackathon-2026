@@ -1,0 +1,9 @@
+import type { ResourceListItem } from "@/lib/types/resources";
+
+const covers = ["bg-[#c84432] text-[#fff5de]", "bg-[#244f46] text-[#f6ead0]", "bg-[#d2a85a] text-[#172d29]", "bg-[#303839] text-[#f0dfbb]", "bg-[#6a3b2a] text-[#fff4dc]", "bg-[#596b8a] text-[#fff5dd]"];
+
+export function ResourceCover({ resource, className = "" }: { resource: ResourceListItem; className?: string }) {
+  const index = resource.title.split("").reduce((sum, letter) => sum + letter.charCodeAt(0), 0) % covers.length;
+  const kind = resource.type === "paper" ? "研究论文" : resource.type === "collection" ? "策展专题" : resource.type === "talk" ? "讲座" : "馆藏图书";
+  return <div className={`relative flex aspect-[3/4] flex-col justify-between overflow-hidden border border-black/15 p-3 shadow-[5px_6px_0_rgb(21_43_38_/_18%)] ${covers[index]} ${className}`}><div className="border-t border-current/50 pt-2 text-[10px] font-semibold">书外之遇 / {kind}</div><div><p className="font-serif text-xl leading-tight">{resource.title}</p><p className="mt-2 text-xs opacity-90">{resource.creators[0]}</p></div><div className="border-t border-current/50 pt-2 text-[10px]">{resource.tags[0]?.name}</div></div>;
+}
