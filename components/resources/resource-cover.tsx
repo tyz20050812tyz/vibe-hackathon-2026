@@ -1,3 +1,5 @@
+/* eslint-disable @next/next/no-img-element -- seed records supply dynamic Open Library image URLs. */
+
 import type { ResourceListItem } from "@/lib/types/resources";
 
 const covers = ["bg-[#c84432] text-[#fff5de]", "bg-[#244f46] text-[#f6ead0]", "bg-[#d2a85a] text-[#172d29]", "bg-[#303839] text-[#f0dfbb]", "bg-[#6a3b2a] text-[#fff4dc]", "bg-[#596b8a] text-[#fff5dd]"];
