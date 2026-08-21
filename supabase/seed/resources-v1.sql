@@ -130,7 +130,7 @@ values
   (
     'generative-art', 'collection', 'Generative Art', 'Rules, randomness, and visual form',
     '["书外之遇编辑部"]'::jsonb, 2026,
-    '围绕算法、随机性和视觉表达策展，连接人工智能、设计和当代艺术的不同读法。',
+    '围绕 AI、算法、随机性和视觉表达策展，连接人工智能、设计和当代艺术的不同读法。',
     null, '数字展柜 E-02', 'online', null, true
   ),
   (
