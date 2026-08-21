@@ -6,6 +6,12 @@ export type ApiSuccess<T> = {
 export type ApiErrorCode =
   | "VALIDATION_ERROR"
   | "INVALID_JSON"
+  | "UNAUTHORIZED"
+  | "FORBIDDEN"
+  | "RESOURCE_NOT_FOUND"
+  | "ALREADY_SAVED"
+  | "CONFIGURATION_ERROR"
+  | "SUPABASE_UNAVAILABLE"
   | "INTERNAL_ERROR";
 
 export type ApiFailure = {
