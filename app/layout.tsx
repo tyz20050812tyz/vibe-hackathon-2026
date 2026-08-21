@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Vibe Hackathon 2026",
-  description: "Vibe Coding 竞赛协作工作区",
+  title: "书外之遇",
+  description: "一间供意外发现发生的数字图书馆。",
 };
 
 import { Toaster } from "sonner"; // 1. 引入 Toaster
