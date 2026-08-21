@@ -12,6 +12,11 @@ const passwordSchema = z
 
 export const signInSchema = z.object({ email: emailSchema, password: passwordSchema }).strict();
 export const signUpSchema = z.object({ email: emailSchema, password: passwordSchema }).strict();
+export const authCallbackSchema = z.object({
+  accessToken: z.string({ error: "缺少确认会话。" }).min(1, "缺少确认会话。"),
+  refreshToken: z.string({ error: "缺少确认会话。" }).min(1, "缺少确认会话。"),
+}).strict();
 
 export type SignInInput = z.output<typeof signInSchema>;
 export type SignUpInput = z.output<typeof signUpSchema>;
+export type AuthCallbackInput = z.output<typeof authCallbackSchema>;
