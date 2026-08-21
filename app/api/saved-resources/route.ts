@@ -13,7 +13,7 @@ function accessToken(request: Request) {
 
 function libraryFailure(error: unknown, requestId: string) {
   if (error instanceof PersonalLibraryError) {
-    const status = error.code === "UNAUTHORIZED" ? 401 : error.code === "ALREADY_SAVED" ? 409 : error.code === "INTERNAL_ERROR" ? 500 : 503;
+    const status = error.code === "UNAUTHORIZED" ? 401 : error.code === "RESOURCE_NOT_FOUND" ? 404 : error.code === "ALREADY_SAVED" ? 409 : error.code === "INTERNAL_ERROR" ? 500 : 503;
     return failure(error.code, error.message, status, requestId);
   }
   return failure("INTERNAL_ERROR", "个人书架服务暂时不可用。", 500, requestId);
