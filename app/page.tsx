@@ -6,6 +6,8 @@ import { ResourceCover } from "@/components/resources/resource-cover";
 import { popularTags } from "@/lib/catalog-filters";
 import { searchResourceCatalog } from "@/lib/server/resource-api";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const result = await searchResourceCatalog({ limit: 20 });
   const featured = result.data?.items.slice(0, 4) ?? [];
