@@ -32,7 +32,12 @@ const slugSchema = z
 
 export const searchResourcesQuerySchema = z
   .object({
-    q: z.string().trim().max(80, "搜索词不能超过 80 个字符。").optional(),
+    q: z
+      .string()
+      .trim()
+      .max(80, "搜索词不能超过 80 个字符。")
+      .transform((value) => value || undefined)
+      .optional(),
     tag: slugSchema.optional(),
     type: resourceTypeSchema.optional(),
     limit: z.coerce.number().int().min(1).max(50).default(20),
