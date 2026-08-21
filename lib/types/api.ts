@@ -6,6 +6,7 @@ export type ApiSuccess<T> = {
 export type ApiErrorCode =
   | "VALIDATION_ERROR"
   | "INVALID_JSON"
+  | "AUTHENTICATION_FAILED"
   | "UNAUTHORIZED"
   | "FORBIDDEN"
   | "RESOURCE_NOT_FOUND"
