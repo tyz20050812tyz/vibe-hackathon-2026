@@ -99,3 +99,6 @@ export type SearchResourcesResponse = ApiSuccess<SearchResourcesData> | ApiFailu
 export type GetResourceResponse = ApiSuccess<GetResourceData> | ApiFailure;
 export type ListSavedResourcesResponse = ApiSuccess<SavedResource[]> | ApiFailure;
 export type CreateSavedResourceResponse = ApiSuccess<SavedResource> | ApiFailure;
+export type DeleteSavedResourceResponse =
+  | ApiSuccess<{ resourceId: string }>
+  | ApiFailure;
