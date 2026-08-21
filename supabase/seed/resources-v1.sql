@@ -33,103 +33,103 @@ values
     'the-creative-act', 'book', 'The Creative Act', 'A Way of Being',
     '["Rick Rubin"]'::jsonb, 2023,
     '从日常观察出发讨论创作习惯、注意力与判断力，适合作为 AI 与创造力故事的起点。',
-    null, null, 'check_library', null, true
+    'https://covers.openlibrary.org/b/isbn/9780593652886-L.jpg', '演示馆藏 / 位置待确认', 'check_library', null, true
   ),
   (
     'the-age-of-ai', 'book', 'The Age of AI', 'And Our Human Future',
     '["Henry A. Kissinger", "Eric Schmidt", "Daniel Huttenlocher"]'::jsonb, 2021,
     '以历史和哲学视角讨论人工智能如何改变知识、决策与人的自我理解。',
-    null, null, 'check_library', null, true
+    'https://covers.openlibrary.org/b/isbn/9780316273800-L.jpg', '演示馆藏 / 位置待确认', 'check_library', null, true
   ),
   (
     'how-to-create-a-mind', 'book', 'How to Create a Mind', null,
     '["Ray Kurzweil"]'::jsonb, 2012,
     '从模式识别和脑科学的角度介绍心智模型，为理解生成式系统提供跨学科入口。',
-    null, null, 'check_library', null, false
+    'https://covers.openlibrary.org/b/isbn/9780143120174-L.jpg', '演示馆藏 / 位置待确认', 'check_library', null, false
   ),
   (
     'the-creative-mind', 'book', 'The Creative Mind', 'Myths and Mechanisms',
     '["Margaret A. Boden"]'::jsonb, 2004,
     '解释组合、探索与变革三类创造力机制，帮助读者区分生成结果与创造过程。',
-    null, null, 'online', 'https://www.routledge.com/The-Creative-Mind-Myths-and-Mechanisms/Boden/p/book/9780415314527', true
+    'https://covers.openlibrary.org/b/isbn/9780415314527-L.jpg', '在线资源', 'online', 'https://www.routledge.com/The-Creative-Mind-Myths-and-Mechanisms/Boden/p/book/9780415314527', true
   ),
   (
     'ways-of-seeing', 'book', 'Ways of Seeing', null,
     '["John Berger"]'::jsonb, 1972,
     '通过图像、权力和观看习惯重新理解视觉文化，是设计与摄影主题的重要入口。',
-    null, null, 'check_library', null, true
+    'https://covers.openlibrary.org/b/isbn/9780140135152-L.jpg', '演示馆藏 / 位置待确认', 'check_library', null, true
   ),
   (
     'the-design-of-everyday-things', 'book', 'The Design of Everyday Things', null,
     '["Don Norman"]'::jsonb, 2013,
     '以日常物件说明可理解性、反馈与错误设计，连接设计思考和用户体验。',
-    null, null, 'check_library', null, false
+    'https://covers.openlibrary.org/b/isbn/9780465050659-L.jpg', '演示馆藏 / 位置待确认', 'check_library', null, false
   ),
   (
     'the-image-of-the-city', 'book', 'The Image of the City', null,
     '["Kevin Lynch"]'::jsonb, 1960,
     '研究人们如何通过路径、边界和地标形成城市意象，适合城市与记忆故事。',
-    null, null, 'check_library', null, true
+    'https://covers.openlibrary.org/b/isbn/9780262620017-L.jpg', '演示馆藏 / 位置待确认', 'check_library', null, true
   ),
   (
     'the-practice-of-everyday-life', 'book', 'The Practice of Everyday Life', null,
     '["Michel de Certeau"]'::jsonb, 1984,
     '从行走、叙述与消费行为理解普通人怎样在城市结构中创造自己的生活空间。',
-    null, null, 'check_library', null, false
+    'https://covers.openlibrary.org/b/isbn/9780520081576-L.jpg', '演示馆藏 / 位置待确认', 'check_library', null, false
   ),
   (
     'invisible-cities', 'book', 'Invisible Cities', null,
     '["Italo Calvino"]'::jsonb, 1972,
     '用想象中的城市讨论记忆、欲望与语言，让城市经验从测量转向叙事。',
-    null, null, 'check_library', null, true
+    'https://covers.openlibrary.org/b/isbn/9780156453806-L.jpg', '演示馆藏 / 位置待确认', 'check_library', null, true
   ),
   (
     'on-photography', 'book', 'On Photography', null,
     '["Susan Sontag"]'::jsonb, 1977,
     '以短文分析摄影如何影响记忆、旅行和公共观看，是城市摄影的批判性参考。',
-    null, null, 'check_library', null, false
+    'https://covers.openlibrary.org/b/isbn/9780312420098-L.jpg', '演示馆藏 / 位置待确认', 'check_library', null, false
   ),
   (
     'the-arcades-project', 'book', 'The Arcades Project', null,
     '["Walter Benjamin"]'::jsonb, 1999,
     '由城市片段、引文和观察组成的未完成著作，呈现现代都市与集体记忆的关系。',
-    null, null, 'check_library', null, false
+    'https://covers.openlibrary.org/b/isbn/9780674008022-L.jpg', '演示馆藏 / 位置待确认', 'check_library', null, false
   ),
   (
     'the-library-of-babel', 'book', 'The Library of Babel', null,
     '["Jorge Luis Borges"]'::jsonb, 1941,
     '一座容纳所有可能文本的图书馆，引出秩序、偶然与知识边界的思考。',
-    null, null, 'check_library', null, true
+    'https://covers.openlibrary.org/b/isbn/9780141183848-L.jpg', '演示馆藏 / 位置待确认', 'check_library', null, true
   ),
   (
     'the-order-of-things', 'book', 'The Order of Things', null,
     '["Michel Foucault"]'::jsonb, 1966,
     '讨论知识如何被分类与命名，能把小说里的无限书架带向知识制度的问题。',
-    null, null, 'check_library', null, false
+    'https://covers.openlibrary.org/b/isbn/9780394713403-L.jpg', '演示馆藏 / 位置待确认', 'check_library', null, false
   ),
   (
     'the-organization-of-knowledge', 'book', 'Organizing Knowledge: Introduction to Access to Information', null,
     '["J. E. Rowley", "John Farrow"]'::jsonb, 2018,
     '介绍分类法、索引与检索系统的基本思想，连接图书馆实践和信息架构。',
-    null, null, 'check_library', 'https://www.routledge.com/Organizing-Knowledge-Introduction-to-Access-to-Information-Introduction-to-Access-to-Information/Rowley-Farrow/p/book/9781138717947', false
+    'https://covers.openlibrary.org/b/isbn/9781138717947-L.jpg', '演示馆藏 / 位置待确认', 'check_library', 'https://www.routledge.com/Organizing-Knowledge-Introduction-to-Access-to-Information-Introduction-to-Access-to-Information/Rowley-Farrow/p/book/9781138717947', false
   ),
   (
     'the-pleasures-of-counting', 'book', 'The Pleasures of Counting', null,
     '["T. W. Korner"]'::jsonb, 1996,
     '从数学故事谈无限、概率和发现的乐趣，为偶然阅读提供一个理性而轻盈的岔路。',
-    null, null, 'check_library', null, false
+    'https://covers.openlibrary.org/b/isbn/9780521450145-L.jpg', '演示馆藏 / 位置待确认', 'check_library', null, false
   ),
   (
     'the-myth-of-sisyphus', 'book', 'The Myth of Sisyphus', null,
     '["Albert Camus"]'::jsonb, 1942,
     '从荒诞经验讨论意义的生成，为偶然和选择提供存在主义的观看方式。',
-    null, null, 'check_library', null, false
+    'https://covers.openlibrary.org/b/isbn/9780679733737-L.jpg', '演示馆藏 / 位置待确认', 'check_library', null, false
   ),
   (
     'the-art-of-noticing', 'book', 'The Art of Noticing', null,
     '["Rob Walker"]'::jsonb, 2019,
     '通过练习注意力和观察日常场景，帮助读者从习以为常的环境里发现新的问题。',
-    null, null, 'check_library', 'https://www.penguinrandomhouse.com/books/570033/the-art-of-noticing-by-rob-walker/', true
+    'https://covers.openlibrary.org/b/isbn/9780525533288-L.jpg', '演示馆藏 / 位置待确认', 'check_library', 'https://www.penguinrandomhouse.com/books/570033/the-art-of-noticing-by-rob-walker/', true
   ),
   (
     'generative-art', 'collection', 'Generative Art', 'Rules, randomness, and visual form',
