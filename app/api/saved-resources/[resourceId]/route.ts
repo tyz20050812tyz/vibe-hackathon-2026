@@ -14,7 +14,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ r
   if (!parsed.success) return failure("VALIDATION_ERROR", parsed.error.issues[0]?.message ?? "资源标识不合法。", 400, requestId);
   try { const data = await removeSavedResource(token, parsed.data.resourceId); return success(data.resourceId, requestId); } catch (error) {
     if (error instanceof PersonalLibraryError) {
-      const status = error.code === "UNAUTHORIZED" ? 401 : error.code === "INTERNAL_ERROR" ? 500 : 503;
+      const status = error.code === "UNAUTHORIZED" ? 401 : error.code === "RESOURCE_NOT_FOUND" ? 404 : error.code === "INTERNAL_ERROR" ? 500 : 503;
       return failure(error.code, error.message, status, requestId);
     }
     return failure("INTERNAL_ERROR", "无法从个人书架移除资源。", 500, requestId);

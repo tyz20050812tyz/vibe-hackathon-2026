@@ -4,7 +4,7 @@ import { createSupabaseAuthenticatedServerClient } from "@/lib/supabase/server";
 import type { CreateSavedResourceInput } from "@/lib/schemas/resources";
 import type { Availability, ResourceListItem, ResourceType, SavedResource, TagCategory } from "@/lib/types/resources";
 
-export type PersonalLibraryErrorCode = "CONFIGURATION_ERROR" | "SUPABASE_UNAVAILABLE" | "UNAUTHORIZED" | "ALREADY_SAVED" | "INTERNAL_ERROR";
+export type PersonalLibraryErrorCode = "CONFIGURATION_ERROR" | "SUPABASE_UNAVAILABLE" | "UNAUTHORIZED" | "RESOURCE_NOT_FOUND" | "ALREADY_SAVED" | "INTERNAL_ERROR";
 
 export class PersonalLibraryError extends Error {
   constructor(public readonly code: PersonalLibraryErrorCode, message: string) {
@@ -31,6 +31,11 @@ function internal(message: string) { return new PersonalLibraryError("INTERNAL_E
 async function userId(supabase: SupabaseClient) {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) throw new PersonalLibraryError("UNAUTHORIZED", "登录已失效，请重新登录。");
+  const displayName = data.user.email?.split("@", 1)[0]?.slice(0, 50) || null;
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .upsert({ id: data.user.id, display_name: displayName }, { onConflict: "id", ignoreDuplicates: true });
+  if (profileError) throw unavailable("无法初始化用户资料。");
   return data.user.id;
 }
 
@@ -59,6 +64,7 @@ export async function saveResource(accessToken: string, input: CreateSavedResour
   const id = await userId(supabase);
   const { error } = await supabase.from("saved_resources").insert({ user_id: id, resource_id: input.resourceId, note: input.note ?? null });
   if (error?.code === "23505") throw new PersonalLibraryError("ALREADY_SAVED", "这项资源已在你的书架中。");
+  if (error?.code === "23503") throw new PersonalLibraryError("RESOURCE_NOT_FOUND", "要收藏的资源不存在。");
   if (error) throw unavailable("无法保存到个人书架。");
   const saved = await listSavedResources(accessToken);
   const resource = saved.find((item) => item.resource.id === input.resourceId);
