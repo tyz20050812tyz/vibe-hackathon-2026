@@ -28,3 +28,19 @@ export function createSupabaseServerClient() {
 
   return createClient(url, serviceRoleKey, serverClientOptions);
 }
+
+export function createSupabaseAuthenticatedServerClient(accessToken: string) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+  if (!url || !publishableKey) {
+    throw new Error("Supabase public server configuration is incomplete.");
+  }
+
+  return createClient(url, publishableKey, {
+    ...serverClientOptions,
+    global: {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  });
+}
