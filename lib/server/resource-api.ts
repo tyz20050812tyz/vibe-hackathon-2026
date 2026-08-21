@@ -14,15 +14,19 @@ async function apiOrigin() {
 }
 
 export async function searchResourceCatalog(query: SearchResourcesQuery = {}) {
-  const params = new URLSearchParams();
-  if (query.q) params.set("q", query.q);
-  if (query.tag) params.set("tag", query.tag);
-  if (query.type) params.set("type", query.type);
-  if (query.limit) params.set("limit", String(query.limit));
-  const response = await fetch(`${await apiOrigin()}/api/resources?${params.toString()}`, { cache: "no-store" });
-  const body = await response.json() as CatalogResponse;
-  if (!response.ok || !body.data) {
-    return { data: null, error: "error" in body && body.error ? body.error.message : "资源目录暂时无法读取。" };
+  try {
+    const params = new URLSearchParams();
+    if (query.q) params.set("q", query.q);
+    if (query.tag) params.set("tag", query.tag);
+    if (query.type) params.set("type", query.type);
+    if (query.limit) params.set("limit", String(query.limit));
+    const response = await fetch(`${await apiOrigin()}/api/resources?${params.toString()}`, { cache: "no-store" });
+    const body = await response.json() as CatalogResponse;
+    if (!response.ok || !body.data) {
+      return { data: null, error: "error" in body && body.error ? body.error.message : "资源目录暂时无法读取。" };
+    }
+    return { data: body.data, error: null };
+  } catch {
+    return { data: null, error: "资源目录暂时无法读取，请稍后重试。" };
   }
-  return { data: body.data, error: null };
 }
