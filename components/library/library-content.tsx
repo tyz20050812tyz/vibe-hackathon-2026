@@ -1,23 +1,68 @@
 "use client";
 
-import { Bookmark, LogOut } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
+import { LogOut } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
+import { AuthForm } from "@/components/auth/auth-form";
 import { ResourceList } from "@/components/resources/resource-list";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { SavedResource } from "@/lib/types/resources";
 
+type LibraryState = "loading" | "unauthenticated" | "success" | "error";
+
 export function LibraryContent() {
-  const client = useMemo(() => { try { return createSupabaseBrowserClient(); } catch { return null; } }, []);
-  const [session, setSession] = useState<Session | null>(null);
-  const [authReady, setAuthReady] = useState(false); const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
-  const [message, setMessage] = useState(""); const [items, setItems] = useState<SavedResource[]>([]); const [state, setState] = useState("idle"); const [removingId, setRemovingId] = useState<string | null>(null); const [authBusy, setAuthBusy] = useState(false);
-  useEffect(() => { if (!client) return; client.auth.getSession().then(({ data }) => setSession(data.session)).catch(() => setMessage("无法确认登录状态，请稍后重试。")).finally(() => setAuthReady(true)); const { data } = client.auth.onAuthStateChange((_event, next) => setSession(next)); return () => data.subscription.unsubscribe(); }, [client]);
-  useEffect(() => { if (!session) return; void (async () => { setState("loading"); try { const response = await fetch("/api/saved-resources", { headers: { Authorization: `Bearer ${session.access_token}` } }); const body = await response.json() as { data?: SavedResource[]; error?: { message: string } }; if (!response.ok) throw new Error(body.error?.message); setItems(body.data ?? []); setState("success"); } catch (error) { setMessage(error instanceof Error ? error.message : "无法读取个人书架。"); setState("error"); } })(); }, [session]);
-  const login = async (signup: boolean) => { if (!client || authBusy) return; setAuthBusy(true); setMessage(""); try { const result = signup ? await client.auth.signUp({ email, password }) : await client.auth.signInWithPassword({ email, password }); if (result.error) setMessage(result.error.message); else if (signup && !result.data.session) setMessage("注册成功，请检查邮箱并完成验证后登录。"); } catch { setMessage("网络暂时不可用，请稍后重试。"); } finally { setAuthBusy(false); } };
-  const remove = async (resourceId: string) => { if (!session || removingId) return; setRemovingId(resourceId); setMessage(""); try { const response = await fetch(`/api/saved-resources/${resourceId}`, { method: "DELETE", headers: { Authorization: `Bearer ${session.access_token}` } }); if (response.ok) setItems((current) => current.filter((item) => item.resource.id !== resourceId)); else setMessage("无法移除这项资源，请稍后重试。"); } catch { setMessage("网络暂时不可用，请稍后重试。"); } finally { setRemovingId(null); } };
-  if (client && !authReady) return <p className="py-16 text-[#52625d]">正在确认登录状态...</p>;
-  if (!session) return <section className="max-w-md border border-[#254a42]/30 bg-[#f0efd9] p-6"><Bookmark className="size-6 text-[#a23b2c]" /><h2 className="mt-4 font-serif text-3xl">把阅读线索留在这里</h2><p className="mt-3 text-sm leading-6 text-[#45554f]">登录后可以收藏资源，并在下次回来时继续阅读。</p>{!client ? <p className="mt-5 text-sm text-[#a23b2c]">登录服务尚未配置。请设置公开 Supabase URL 和 publishable key。</p> : <div className="mt-6 space-y-3"><label className="block text-sm">邮箱<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} disabled={authBusy} className="mt-1 block w-full border border-[#254a42]/30 bg-[#fffdf5] px-3 py-2 disabled:opacity-60" /></label><label className="block text-sm">密码<input type="password" minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} disabled={authBusy} className="mt-1 block w-full border border-[#254a42]/30 bg-[#fffdf5] px-3 py-2 disabled:opacity-60" /></label><div className="flex gap-2"><button onClick={() => login(false)} disabled={authBusy} className="border border-[#254a42] px-3 py-2 text-sm hover:bg-[#254a42] hover:text-[#fff8e9] disabled:opacity-60">{authBusy ? "正在处理" : "登录"}</button><button onClick={() => login(true)} disabled={authBusy} className="border border-[#254a42]/30 px-3 py-2 text-sm hover:bg-[#e4e7d4] disabled:opacity-60">注册</button></div></div>}{message ? <p className="mt-3 text-sm text-[#a23b2c]" role="status">{message}</p> : null}</section>;
-  return <section><div className="flex items-center justify-between border-b border-[#254a42]/20 pb-4"><p className="text-sm text-[#52625d]">{session.user.email}</p><button onClick={() => client?.auth.signOut()} className="inline-flex items-center gap-1 text-sm text-[#254a42] hover:underline"><LogOut className="size-4" />退出登录</button></div>{state === "loading" ? <p className="py-14 text-[#52625d]">正在整理你的书架...</p> : null}{state === "error" ? <p className="py-8 text-[#a23b2c]">{message}</p> : null}{state === "success" && !items.length ? <div className="border border-dashed border-[#254a42]/35 px-6 py-14 text-center"><p className="font-serif text-2xl">书架还没有资源</p><p className="mt-2 text-sm text-[#52625d]">从资源详情页收藏第一条阅读线索。</p></div> : null}{state === "success" && items.length ? items.map((item) => <div key={item.resource.id} className="relative border-b border-[#254a42]/20 pb-5"><ResourceList resources={[item.resource]} />{item.note ? <p className="ml-[calc(5.5rem+1rem)] border-l-2 border-[#a23b2c]/70 pl-3 text-sm leading-6 text-[#45554f] sm:ml-[calc(7rem+1rem)]">{item.note}</p> : null}<button onClick={() => remove(item.resource.id)} disabled={removingId !== null} className="absolute right-10 top-5 text-xs text-[#a23b2c] hover:underline disabled:opacity-50">{removingId === item.resource.id ? "正在移除" : "移除"}</button></div>) : null}</section>;
+  const [items, setItems] = useState<SavedResource[]>([]);
+  const [state, setState] = useState<LibraryState>("loading");
+  const [message, setMessage] = useState("");
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
+
+  const load = useCallback(async () => {
+    setState("loading");
+    setMessage("");
+    try {
+      const response = await fetch("/api/saved-resources", { cache: "no-store" });
+      const body = await response.json() as { data?: SavedResource[]; error?: { message?: string } };
+      if (response.status === 401) { setState("unauthenticated"); return; }
+      if (!response.ok) throw new Error(body.error?.message ?? "无法读取个人书架。");
+      setItems(body.data ?? []);
+      setState("success");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "无法读取个人书架。");
+      setState("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    const task = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(task);
+  }, [load]);
+
+  const remove = async (resourceId: string) => {
+    if (removingId) return;
+    setRemovingId(resourceId);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/saved-resources/${resourceId}`, { method: "DELETE" });
+      const body = await response.json() as { error?: { message?: string } };
+      if (!response.ok) throw new Error(body.error?.message ?? "无法移除这项资源。");
+      setItems((current) => current.filter((item) => item.resource.id !== resourceId));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "无法移除这项资源。");
+    } finally { setRemovingId(null); }
+  };
+
+  const signOut = async () => {
+    setSigningOut(true);
+    try {
+      await fetch("/api/auth/sign-out", { method: "POST" });
+      setItems([]);
+      setState("unauthenticated");
+    } finally { setSigningOut(false); }
+  };
+
+  if (state === "loading") return <p className="py-16 text-[#52625d]">正在确认登录状态...</p>;
+  if (state === "unauthenticated") return <AuthForm onAuthenticated={() => void load()} />;
+  if (state === "error") return <div className="border border-dashed border-[#a23b2c] px-6 py-12"><p className="font-serif text-2xl">个人书架暂时无法读取</p><p className="mt-2 text-sm text-[#a23b2c]">{message}</p><button type="button" onClick={() => void load()} className="mt-5 border border-[#254a42] px-3 py-2 text-sm text-[#254a42] hover:bg-[#254a42] hover:text-[#fff8e9]">重新尝试</button></div>;
+
+  return <section><div className="flex items-center justify-between border-b border-[#254a42]/20 pb-4"><p className="text-sm text-[#52625d]">仅你可见的阅读线索</p><button type="button" onClick={() => void signOut()} disabled={signingOut} className="inline-flex items-center gap-1 text-sm text-[#254a42] hover:underline disabled:opacity-60"><LogOut className="size-4" />{signingOut ? "正在退出" : "退出登录"}</button></div>{message ? <p className="mt-4 text-sm text-[#a23b2c]" role="status">{message}</p> : null}{!items.length ? <div className="border border-dashed border-[#254a42]/35 px-6 py-14 text-center"><p className="font-serif text-2xl">书架还没有资源</p><p className="mt-2 text-sm text-[#52625d]">从资源详情页收藏第一条阅读线索。</p></div> : items.map((item) => <div key={item.resource.id} className="relative"><ResourceList resources={[item.resource]} /><button type="button" onClick={() => void remove(item.resource.id)} disabled={removingId !== null} className="absolute right-10 top-5 text-xs text-[#a23b2c] hover:underline disabled:opacity-50">{removingId === item.resource.id ? "正在移除" : "移除"}</button></div>)}</section>;
 }

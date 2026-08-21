@@ -3,6 +3,7 @@ import type { ApiErrorCode, ApiFailure, ApiSuccess } from "@/lib/types/api";
 const HTTP_STATUS_BY_ERROR_CODE: Record<ApiErrorCode, number> = {
   VALIDATION_ERROR: 400,
   INVALID_JSON: 400,
+  AUTHENTICATION_FAILED: 401,
   UNAUTHORIZED: 401,
   FORBIDDEN: 403,
   RESOURCE_NOT_FOUND: 404,
