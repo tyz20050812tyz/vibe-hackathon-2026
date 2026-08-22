@@ -1,11 +1,8 @@
 import { Bookmark, BookOpenCheck, MessageSquareText, Tags } from "lucide-react";
 
-export type LibraryStatsData = {
-  savedCount: number;
-  notedCount: number;
-  topicCount: number;
-  latestSavedAt: string | null;
-};
+import type { LibraryStats as LibraryStatsData } from "@/lib/types/profile";
+
+export type { LibraryStatsData };
 
 function formatSavedAt(value: string | null) {
   if (!value) return "还没有收藏";

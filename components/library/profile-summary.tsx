@@ -3,11 +3,9 @@
 import { Check, PencilLine, UserRound } from "lucide-react";
 import { useState } from "react";
 
-export type ReaderProfile = {
-  displayName: string | null;
-  email: string;
-  joinedAt: string | null;
-};
+import type { ReaderProfile } from "@/lib/types/profile";
+
+export type { ReaderProfile };
 
 function joinedLabel(value: string | null) {
   if (!value) return null;
