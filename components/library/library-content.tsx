@@ -66,6 +66,8 @@ export function LibraryContent() {
   const [signingOut, setSigningOut] = useState(false);
   const [discovery, setDiscovery] = useState<{ items: DiscoveryItem[]; sourceTitle: string | null; loading: boolean; error: string | null }>({ items: [], sourceTitle: null, loading: true, error: null });
   const requestEpoch = useRef(0);
+  const discoverySequence = useRef(0);
+  const savedLoadedEpoch = useRef<number | null>(null);
 
   const loadProfile = useCallback(async (epoch: number) => {
     try {
@@ -78,21 +80,23 @@ export function LibraryContent() {
       }
       setProfile(body.data.profile);
       setProfileEnabled(true);
+      if (savedLoadedEpoch.current !== epoch) setStats(body.data.stats);
       window.dispatchEvent(new Event("library-auth-changed"));
     } catch { if (requestEpoch.current === epoch) setProfileEnabled(false); }
   }, []);
 
   const loadDiscovery = useCallback(async (epoch: number) => {
     if (requestEpoch.current !== epoch) return;
+    const sequence = ++discoverySequence.current;
     setDiscovery((current) => ({ ...current, loading: true, error: null }));
     try {
       const response = await fetch("/api/discover", { cache: "no-store" });
       const body = await response.json() as ApiEnvelope<DiscoveryData>;
-      if (requestEpoch.current !== epoch) return;
+      if (requestEpoch.current !== epoch || discoverySequence.current !== sequence) return;
       if (!response.ok || !body.data) throw new Error(apiMessage(body, "暂时无法找到下一条阅读路径。"));
       setDiscovery({ items: body.data.items, sourceTitle: body.data.source?.title ?? null, loading: false, error: null });
     } catch (error) {
-      if (requestEpoch.current !== epoch) return;
+      if (requestEpoch.current !== epoch || discoverySequence.current !== sequence) return;
       setDiscovery({ items: [], sourceTitle: null, loading: false, error: error instanceof Error ? error.message : "暂时无法找到下一条阅读路径。" });
     }
   }, []);
@@ -104,6 +108,7 @@ export function LibraryContent() {
     setProfile(null);
     setProfileEnabled(false);
     setDiscovery({ items: [], sourceTitle: null, loading: true, error: null });
+    savedLoadedEpoch.current = null;
     void loadProfile(epoch);
     void loadDiscovery(epoch);
     try {
@@ -113,6 +118,7 @@ export function LibraryContent() {
       if (response.status === 401) { setState("unauthenticated"); return; }
       if (!response.ok) throw new Error(apiMessage(body, "无法读取个人书架。"));
       const saved = body.data ?? [];
+      savedLoadedEpoch.current = epoch;
       setItems(saved);
       setStats(statsFrom(saved));
       setState("success");
@@ -129,9 +135,11 @@ export function LibraryContent() {
   }, [load]);
 
   const saveProfile = async (displayName: string) => {
+    const epoch = requestEpoch.current;
     const payload: ProfileUpdateRequest = { displayName };
     const response = await fetch("/api/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     const body = await response.json() as ApiEnvelope<ProfileOverview | ReaderProfile>;
+    if (requestEpoch.current !== epoch) return;
     if (!response.ok) throw new Error(apiMessage(body, "暂时无法更新显示名。"));
     const nextProfile = "profile" in (body.data ?? {}) ? (body.data as ProfileOverview).profile : body.data as ReaderProfile;
     setProfile(nextProfile);
@@ -154,16 +162,20 @@ export function LibraryContent() {
 
   const signOut = async () => {
     setSigningOut(true);
-    ++requestEpoch.current;
-    setProfile(null);
-    setProfileEnabled(false);
-    setDiscovery({ items: [], sourceTitle: null, loading: false, error: null });
-    setItems([]);
-    setStats(statsFrom([]));
     try {
-      await fetch("/api/auth/sign-out", { method: "POST" });
+      const response = await fetch("/api/auth/sign-out", { method: "POST" });
+      const body = await response.json() as ApiEnvelope<null>;
+      if (!response.ok) throw new Error(apiMessage(body, "退出登录失败，请稍后重试。"));
+      ++requestEpoch.current;
+      setProfile(null);
+      setProfileEnabled(false);
+      setDiscovery({ items: [], sourceTitle: null, loading: false, error: null });
+      setItems([]);
+      setStats(statsFrom([]));
       window.dispatchEvent(new Event("library-auth-changed"));
       setState("unauthenticated");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "退出登录失败，请稍后重试。");
     } finally { setSigningOut(false); }
   };
 
