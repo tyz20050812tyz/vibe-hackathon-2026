@@ -16,6 +16,24 @@ describe("phase two API input schemas", () => {
     );
   });
 
+  it("accepts 50-character display names and rejects longer values", () => {
+    expect(
+      profileUpdateSchema.safeParse({ displayName: "a".repeat(50) }).success,
+    ).toBe(true);
+    expect(
+      profileUpdateSchema.safeParse({ displayName: "a".repeat(51) }).success,
+    ).toBe(false);
+  });
+
+  it("rejects extra profile fields", () => {
+    expect(
+      profileUpdateSchema.safeParse({
+        displayName: "读者",
+        email: "changed@example.com",
+      }).success,
+    ).toBe(false);
+  });
+
   it("accepts an optional valid discovery source UUID", () => {
     expect(discoverQuerySchema.parse({})).toEqual({});
     expect(
