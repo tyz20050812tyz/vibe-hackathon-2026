@@ -147,17 +147,25 @@ export function LibraryContent() {
 
   const remove = async (resourceId: string) => {
     if (removingId) return;
+    const epoch = requestEpoch.current;
     setRemovingId(resourceId);
     setMessage("");
     try {
       const response = await fetch(`/api/saved-resources/${resourceId}`, { method: "DELETE" });
       const body = await response.json() as ApiEnvelope<{ resourceId: string }>;
+      if (requestEpoch.current !== epoch) return;
       if (!response.ok) throw new Error(apiMessage(body, "无法移除这项资源。"));
-      const next = items.filter((item) => item.resource.id !== resourceId);
-      setItems(next);
-      setStats(statsFrom(next));
-      void loadDiscovery(requestEpoch.current);
-    } catch (error) { setMessage(error instanceof Error ? error.message : "无法移除这项资源。"); } finally { setRemovingId(null); }
+      setItems((current) => {
+        const next = current.filter((item) => item.resource.id !== resourceId);
+        setStats(statsFrom(next));
+        return next;
+      });
+      void loadDiscovery(epoch);
+    } catch (error) {
+      if (requestEpoch.current === epoch) setMessage(error instanceof Error ? error.message : "无法移除这项资源。");
+    } finally {
+      if (requestEpoch.current === epoch) setRemovingId(null);
+    }
   };
 
   const signOut = async () => {

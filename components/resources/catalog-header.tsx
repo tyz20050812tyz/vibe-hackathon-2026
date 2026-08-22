@@ -14,16 +14,18 @@ export function CatalogHeader() {
 
   useEffect(() => {
     let active = true;
+    let requestSequence = 0;
     const refresh = async () => {
+      const sequence = ++requestSequence;
       try {
         const response = await fetch("/api/profile", { cache: "no-store" });
         const body = await response.json() as ProfileResponse;
-        if (!active) return;
+        if (!active || sequence !== requestSequence) return;
         if (response.ok && body.data) {
           const profile = body.data.profile;
           setDisplayName(profile.displayName ?? profile.email.split("@", 1)[0] ?? null);
         } else setDisplayName(null);
-      } catch { if (active) setDisplayName(null); }
+      } catch { if (active && sequence === requestSequence) setDisplayName(null); }
     };
     void refresh();
     window.addEventListener("library-auth-changed", refresh);
