@@ -50,4 +50,16 @@ describe("phase two API input schemas", () => {
       discoverQuerySchema.safeParse({ sourceResourceId: "not-a-uuid" }).success,
     ).toBe(false);
   });
+
+  it("rejects empty discovery source IDs and extra query fields", () => {
+    expect(
+      discoverQuerySchema.safeParse({ sourceResourceId: "" }).success,
+    ).toBe(false);
+    expect(
+      discoverQuerySchema.safeParse({
+        sourceResourceId: "123e4567-e89b-42d3-a456-426614174000",
+        limit: "3",
+      }).success,
+    ).toBe(false);
+  });
 });
