@@ -19,6 +19,8 @@ export type ProfileOverview = {
   stats: LibraryStats;
 };
 
-export type ProfileUpdateRequest = { displayName: string };
+export type ProfileUpdate = { displayName: string };
+
+export type ProfileUpdateRequest = ProfileUpdate;
 
 export type ProfileOverviewResponse = ApiSuccess<ProfileOverview> | ApiFailure;
