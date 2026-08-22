@@ -1,18 +1,26 @@
-export type ProfileOverview = {
-  profile: {
-    id: string;
-    displayName: string | null;
-    email: string;
-    joinedAt: string | null;
-  };
-  stats: {
-    savedCount: number;
-    notedCount: number;
-    topicCount: number;
-    latestSavedAt: string | null;
-  };
+import type { ApiFailure, ApiSuccess } from "@/lib/types/api";
+
+export type ReaderProfile = {
+  id: string;
+  displayName: string | null;
+  email: string;
+  joinedAt: string | null;
 };
 
-export type ProfileUpdate = {
-  displayName: string;
+export type LibraryStats = {
+  savedCount: number;
+  notedCount: number;
+  topicCount: number;
+  latestSavedAt: string | null;
 };
+
+export type ProfileOverview = {
+  profile: ReaderProfile;
+  stats: LibraryStats;
+};
+
+export type ProfileUpdate = { displayName: string };
+
+export type ProfileUpdateRequest = ProfileUpdate;
+
+export type ProfileOverviewResponse = ApiSuccess<ProfileOverview> | ApiFailure;
