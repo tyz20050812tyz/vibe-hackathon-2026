@@ -1,23 +1,209 @@
 "use client";
 
-import { Bookmark, LogOut } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
+import Link from "next/link";
+import { ArrowUpRight, LogOut, NotebookPen, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
-import { ResourceList } from "@/components/resources/resource-list";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { AuthForm } from "@/components/auth/auth-form";
+import { DiscoveryCard } from "@/components/library/discovery-card";
+import { LibraryStats, type LibraryStatsData } from "@/components/library/library-stats";
+import { ProfileSummary } from "@/components/library/profile-summary";
+import { ResourceCover } from "@/components/resources/resource-cover";
+import { availabilityLabel, resourceTypeLabel } from "@/lib/resource-presentation";
+import type { DiscoveryData, DiscoveryItem } from "@/lib/types/discovery";
+import type { ApiFailure, ApiSuccess } from "@/lib/types/api";
+import type { ProfileOverview, ProfileUpdateRequest, ReaderProfile } from "@/lib/types/profile";
 import type { SavedResource } from "@/lib/types/resources";
 
+type LibraryState = "loading" | "unauthenticated" | "success" | "error";
+type LibraryView = "all" | "noted" | "online" | "check_library";
+
+type ApiEnvelope<T> = ApiSuccess<T> | ApiFailure;
+
+function apiMessage<T>(body: ApiEnvelope<T>, fallback: string) {
+  return "error" in body ? body.error.message : fallback;
+}
+
+const views: Array<{ value: LibraryView; label: string }> = [
+  { value: "all", label: "全部" },
+  { value: "noted", label: "有笔记" },
+  { value: "online", label: "在线可读" },
+  { value: "check_library", label: "馆藏待查" },
+];
+
+function statsFrom(items: SavedResource[]): LibraryStatsData {
+  return {
+    savedCount: items.length,
+    notedCount: items.filter((item) => Boolean(item.note?.trim())).length,
+    topicCount: new Set(items.flatMap((item) => item.resource.tags.map((tag) => tag.id))).size,
+    latestSavedAt: items[0]?.savedAt ?? null,
+  };
+}
+
+function savedAtLabel(value: string) {
+  return new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "short", day: "numeric" }).format(new Date(value));
+}
+
+function matchesView(item: SavedResource, view: LibraryView) {
+  if (view === "noted") return Boolean(item.note?.trim());
+  if (view === "online" || view === "check_library") return item.resource.availability === view;
+  return true;
+}
+
 export function LibraryContent() {
-  const client = useMemo(() => { try { return createSupabaseBrowserClient(); } catch { return null; } }, []);
-  const [session, setSession] = useState<Session | null>(null);
-  const [authReady, setAuthReady] = useState(false); const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
-  const [message, setMessage] = useState(""); const [items, setItems] = useState<SavedResource[]>([]); const [state, setState] = useState("idle"); const [removingId, setRemovingId] = useState<string | null>(null); const [authBusy, setAuthBusy] = useState(false);
-  useEffect(() => { if (!client) return; client.auth.getSession().then(({ data }) => setSession(data.session)).catch(() => setMessage("无法确认登录状态，请稍后重试。")).finally(() => setAuthReady(true)); const { data } = client.auth.onAuthStateChange((_event, next) => setSession(next)); return () => data.subscription.unsubscribe(); }, [client]);
-  useEffect(() => { if (!session) return; void (async () => { setState("loading"); try { const response = await fetch("/api/saved-resources", { headers: { Authorization: `Bearer ${session.access_token}` } }); const body = await response.json() as { data?: SavedResource[]; error?: { message: string } }; if (!response.ok) throw new Error(body.error?.message); setItems(body.data ?? []); setState("success"); } catch (error) { setMessage(error instanceof Error ? error.message : "无法读取个人书架。"); setState("error"); } })(); }, [session]);
-  const login = async (signup: boolean) => { if (!client || authBusy) return; setAuthBusy(true); setMessage(""); try { const result = signup ? await client.auth.signUp({ email, password }) : await client.auth.signInWithPassword({ email, password }); if (result.error) setMessage(result.error.message); else if (signup && !result.data.session) setMessage("注册成功，请检查邮箱并完成验证后登录。"); } catch { setMessage("网络暂时不可用，请稍后重试。"); } finally { setAuthBusy(false); } };
-  const remove = async (resourceId: string) => { if (!session || removingId) return; setRemovingId(resourceId); setMessage(""); try { const response = await fetch(`/api/saved-resources/${resourceId}`, { method: "DELETE", headers: { Authorization: `Bearer ${session.access_token}` } }); if (response.ok) setItems((current) => current.filter((item) => item.resource.id !== resourceId)); else setMessage("无法移除这项资源，请稍后重试。"); } catch { setMessage("网络暂时不可用，请稍后重试。"); } finally { setRemovingId(null); } };
-  if (client && !authReady) return <p className="py-16 text-[#52625d]">正在确认登录状态...</p>;
-  if (!session) return <section className="max-w-md border border-[#254a42]/30 bg-[#f0efd9] p-6"><Bookmark className="size-6 text-[#a23b2c]" /><h2 className="mt-4 font-serif text-3xl">把阅读线索留在这里</h2><p className="mt-3 text-sm leading-6 text-[#45554f]">登录后可以收藏资源，并在下次回来时继续阅读。</p>{!client ? <p className="mt-5 text-sm text-[#a23b2c]">登录服务尚未配置。请设置公开 Supabase URL 和 publishable key。</p> : <div className="mt-6 space-y-3"><label className="block text-sm">邮箱<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} disabled={authBusy} className="mt-1 block w-full border border-[#254a42]/30 bg-[#fffdf5] px-3 py-2 disabled:opacity-60" /></label><label className="block text-sm">密码<input type="password" minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} disabled={authBusy} className="mt-1 block w-full border border-[#254a42]/30 bg-[#fffdf5] px-3 py-2 disabled:opacity-60" /></label><div className="flex gap-2"><button onClick={() => login(false)} disabled={authBusy} className="border border-[#254a42] px-3 py-2 text-sm hover:bg-[#254a42] hover:text-[#fff8e9] disabled:opacity-60">{authBusy ? "正在处理" : "登录"}</button><button onClick={() => login(true)} disabled={authBusy} className="border border-[#254a42]/30 px-3 py-2 text-sm hover:bg-[#e4e7d4] disabled:opacity-60">注册</button></div></div>}{message ? <p className="mt-3 text-sm text-[#a23b2c]" role="status">{message}</p> : null}</section>;
-  return <section><div className="flex items-center justify-between border-b border-[#254a42]/20 pb-4"><p className="text-sm text-[#52625d]">{session.user.email}</p><button onClick={() => client?.auth.signOut()} className="inline-flex items-center gap-1 text-sm text-[#254a42] hover:underline"><LogOut className="size-4" />退出登录</button></div>{state === "loading" ? <p className="py-14 text-[#52625d]">正在整理你的书架...</p> : null}{state === "error" ? <p className="py-8 text-[#a23b2c]">{message}</p> : null}{state === "success" && !items.length ? <div className="border border-dashed border-[#254a42]/35 px-6 py-14 text-center"><p className="font-serif text-2xl">书架还没有资源</p><p className="mt-2 text-sm text-[#52625d]">从资源详情页收藏第一条阅读线索。</p></div> : null}{state === "success" && items.length ? items.map((item) => <div key={item.resource.id} className="relative"><ResourceList resources={[item.resource]} /><button onClick={() => remove(item.resource.id)} disabled={removingId !== null} className="absolute right-10 top-5 text-xs text-[#a23b2c] hover:underline disabled:opacity-50">{removingId === item.resource.id ? "正在移除" : "移除"}</button></div>) : null}</section>;
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedView = searchParams.get("view");
+  const view: LibraryView = views.some((item) => item.value === requestedView) ? requestedView as LibraryView : "all";
+  const [items, setItems] = useState<SavedResource[]>([]);
+  const [state, setState] = useState<LibraryState>("loading");
+  const [message, setMessage] = useState("");
+  const [profile, setProfile] = useState<ReaderProfile | null>(null);
+  const [profileEnabled, setProfileEnabled] = useState(false);
+  const [stats, setStats] = useState<LibraryStatsData>(statsFrom([]));
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
+  const [discovery, setDiscovery] = useState<{ items: DiscoveryItem[]; sourceTitle: string | null; loading: boolean; error: string | null }>({ items: [], sourceTitle: null, loading: true, error: null });
+  const requestEpoch = useRef(0);
+  const discoverySequence = useRef(0);
+  const savedLoadedEpoch = useRef<number | null>(null);
+
+  const loadProfile = useCallback(async (epoch: number) => {
+    try {
+      const response = await fetch("/api/profile", { cache: "no-store" });
+      const body = await response.json() as ApiEnvelope<ProfileOverview>;
+      if (requestEpoch.current !== epoch) return;
+      if (!response.ok || !body.data) {
+        setProfileEnabled(false);
+        return;
+      }
+      setProfile(body.data.profile);
+      setProfileEnabled(true);
+      if (savedLoadedEpoch.current !== epoch) setStats(body.data.stats);
+      window.dispatchEvent(new Event("library-auth-changed"));
+    } catch { if (requestEpoch.current === epoch) setProfileEnabled(false); }
+  }, []);
+
+  const loadDiscovery = useCallback(async (epoch: number) => {
+    if (requestEpoch.current !== epoch) return;
+    const sequence = ++discoverySequence.current;
+    setDiscovery((current) => ({ ...current, loading: true, error: null }));
+    try {
+      const response = await fetch("/api/discover", { cache: "no-store" });
+      const body = await response.json() as ApiEnvelope<DiscoveryData>;
+      if (requestEpoch.current !== epoch || discoverySequence.current !== sequence) return;
+      if (!response.ok || !body.data) throw new Error(apiMessage(body, "暂时无法找到下一条阅读路径。"));
+      setDiscovery({ items: body.data.items, sourceTitle: body.data.source?.title ?? null, loading: false, error: null });
+    } catch (error) {
+      if (requestEpoch.current !== epoch || discoverySequence.current !== sequence) return;
+      setDiscovery({ items: [], sourceTitle: null, loading: false, error: error instanceof Error ? error.message : "暂时无法找到下一条阅读路径。" });
+    }
+  }, []);
+
+  const load = useCallback(async () => {
+    const epoch = ++requestEpoch.current;
+    setState("loading");
+    setMessage("");
+    setProfile(null);
+    setProfileEnabled(false);
+    setDiscovery({ items: [], sourceTitle: null, loading: true, error: null });
+    savedLoadedEpoch.current = null;
+    void loadProfile(epoch);
+    void loadDiscovery(epoch);
+    try {
+      const response = await fetch("/api/saved-resources", { cache: "no-store" });
+      const body = await response.json() as ApiEnvelope<SavedResource[]>;
+      if (requestEpoch.current !== epoch) return;
+      if (response.status === 401) { setState("unauthenticated"); return; }
+      if (!response.ok) throw new Error(apiMessage(body, "无法读取个人书架。"));
+      const saved = body.data ?? [];
+      savedLoadedEpoch.current = epoch;
+      setItems(saved);
+      setStats(statsFrom(saved));
+      setState("success");
+    } catch (error) {
+      if (requestEpoch.current !== epoch) return;
+      setMessage(error instanceof Error ? error.message : "无法读取个人书架。");
+      setState("error");
+    }
+  }, [loadDiscovery, loadProfile]);
+
+  useEffect(() => {
+    const task = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(task);
+  }, [load]);
+
+  const saveProfile = async (displayName: string) => {
+    const epoch = requestEpoch.current;
+    const payload: ProfileUpdateRequest = { displayName };
+    const response = await fetch("/api/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const body = await response.json() as ApiEnvelope<ProfileOverview | ReaderProfile>;
+    if (requestEpoch.current !== epoch) return;
+    if (!response.ok) throw new Error(apiMessage(body, "暂时无法更新显示名。"));
+    const nextProfile = "profile" in (body.data ?? {}) ? (body.data as ProfileOverview).profile : body.data as ReaderProfile;
+    setProfile(nextProfile);
+  };
+
+  const remove = async (resourceId: string) => {
+    if (removingId) return;
+    const epoch = requestEpoch.current;
+    setRemovingId(resourceId);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/saved-resources/${resourceId}`, { method: "DELETE" });
+      const body = await response.json() as ApiEnvelope<{ resourceId: string }>;
+      if (requestEpoch.current !== epoch) return;
+      if (!response.ok) throw new Error(apiMessage(body, "无法移除这项资源。"));
+      setItems((current) => {
+        const next = current.filter((item) => item.resource.id !== resourceId);
+        setStats(statsFrom(next));
+        return next;
+      });
+      void loadDiscovery(epoch);
+    } catch (error) {
+      if (requestEpoch.current === epoch) setMessage(error instanceof Error ? error.message : "无法移除这项资源。");
+    } finally {
+      if (requestEpoch.current === epoch) setRemovingId(null);
+    }
+  };
+
+  const signOut = async () => {
+    setSigningOut(true);
+    try {
+      const response = await fetch("/api/auth/sign-out", { method: "POST" });
+      const body = await response.json() as ApiEnvelope<null>;
+      if (!response.ok) throw new Error(apiMessage(body, "退出登录失败，请稍后重试。"));
+      ++requestEpoch.current;
+      setProfile(null);
+      setProfileEnabled(false);
+      setDiscovery({ items: [], sourceTitle: null, loading: false, error: null });
+      setItems([]);
+      setStats(statsFrom([]));
+      window.dispatchEvent(new Event("library-auth-changed"));
+      setState("unauthenticated");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "退出登录失败，请稍后重试。");
+    } finally { setSigningOut(false); }
+  };
+
+  const filteredItems = useMemo(() => items.filter((item) => matchesView(item, view)), [items, view]);
+
+  const selectView = (next: LibraryView) => router.replace(next === "all" ? "/library" : `/library?view=${next}`);
+
+  if (state === "loading") return <div className="space-y-6" aria-label="正在加载个人中心"><div className="h-24 animate-pulse bg-[#e4e7d4]" /><div className="grid gap-px bg-[#254a42]/20 sm:grid-cols-4">{Array.from({ length: 4 }).map((_, index) => <div key={index} className="h-28 animate-pulse bg-[#fff8e9]" />)}</div></div>;
+  if (state === "unauthenticated") return <AuthForm onAuthenticated={() => void load()} />;
+  if (state === "error") return <div className="border border-dashed border-[#a23b2c] px-6 py-12"><p className="font-serif text-2xl">个人中心暂时无法读取</p><p className="mt-2 text-sm text-[#a23b2c]">{message}</p><button type="button" onClick={() => void load()} className="mt-5 border border-[#254a42] px-3 py-2 text-sm text-[#254a42] hover:bg-[#254a42] hover:text-[#fff8e9]">重新尝试</button></div>;
+
+  return <section className="space-y-10">
+    <ProfileSummary profile={profile} enabled={profileEnabled} onSave={saveProfile} />
+    <LibraryStats stats={stats} />
+    <DiscoveryCard {...discovery} onRetry={() => void loadDiscovery(requestEpoch.current)} />
+    <section>
+      <div className="flex flex-col gap-5 border-b border-[#254a42]/30 pb-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm text-[#a23b2c]">我的书架</p><h2 className="mt-2 font-serif text-3xl">留下来的阅读线索</h2></div><button type="button" onClick={() => void signOut()} disabled={signingOut} className="inline-flex items-center gap-2 self-start text-sm text-[#254a42] hover:underline disabled:opacity-60 sm:self-auto"><LogOut className="size-4" />{signingOut ? "正在退出" : "退出登录"}</button></div>
+      <div className="mt-5 flex flex-wrap gap-2" aria-label="书架筛选">{views.map((item) => <button key={item.value} type="button" aria-pressed={view === item.value} onClick={() => selectView(item.value)} className={`h-9 border px-3 text-sm transition-colors ${view === item.value ? "border-[#254a42] bg-[#254a42] text-[#fff8e9]" : "border-[#254a42]/30 text-[#254a42] hover:bg-[#e4e7d4]"}`}>{item.label}<span className="ml-1.5 text-xs opacity-75">{items.filter((saved) => matchesView(saved, item.value)).length}</span></button>)}</div>
+      {message ? <p className="mt-4 text-sm text-[#a23b2c]" role="status">{message}</p> : null}
+      {!items.length ? <div className="mt-6 border border-dashed border-[#254a42]/35 px-6 py-14 text-center"><NotebookPen className="mx-auto size-6 text-[#a23b2c]" aria-hidden="true" /><p className="mt-4 font-serif text-2xl">书架还没有资源</p><p className="mt-2 text-sm text-[#52625d]">从资源详情页收藏第一条阅读线索。</p><Link href="/search" className="mt-5 inline-flex items-center gap-2 border border-[#254a42] px-3 py-2 text-sm text-[#254a42] hover:bg-[#254a42] hover:text-[#fff8e9]">去找资源 <ArrowUpRight className="size-4" /></Link></div> : !filteredItems.length ? <div className="mt-6 border border-dashed border-[#254a42]/35 px-6 py-12 text-center"><p className="font-serif text-2xl">这个分区还是空的</p><p className="mt-2 text-sm text-[#52625d]">换一个筛选，或继续收藏新的线索。</p></div> : <div className="mt-6 divide-y divide-[#254a42]/20">{filteredItems.map((item) => <article key={item.resource.id} className="grid gap-4 py-5 sm:grid-cols-[6rem_1fr_auto] sm:gap-5"><ResourceCover resource={item.resource} /><div className="min-w-0"><p className="text-xs text-[#a23b2c]">{resourceTypeLabel(item.resource.type)} · 收藏于 {savedAtLabel(item.savedAt)}</p><h3 className="mt-1 font-serif text-2xl leading-snug"><Link href={`/resources/${item.resource.slug}`} className="hover:underline">{item.resource.title}</Link></h3><p className="mt-1 text-sm text-[#52625d]">{item.resource.creators.join("、")} · {availabilityLabel(item.resource.availability)}</p><div className="mt-3 flex flex-wrap gap-1.5">{item.resource.tags.map((tag) => <Link key={tag.id} href={`/search?tag=${tag.slug}`} className="border border-[#254a42]/25 px-2 py-1 text-xs text-[#254a42] hover:bg-[#e4e7d4]">{tag.name}</Link>)}</div>{item.note ? <blockquote className="mt-4 border-l-2 border-[#d2a85a] pl-3 text-sm leading-6 text-[#45554f]">{item.note}</blockquote> : <p className="mt-4 text-sm text-[#78837c]">还没有留下笔记</p>}</div><div className="flex items-start justify-between gap-3 sm:flex-col sm:items-end"><Link href={`/resources/${item.resource.slug}`} className="inline-flex size-9 items-center justify-center border border-[#254a42]/30 text-[#254a42] hover:bg-[#254a42] hover:text-[#fff8e9]" aria-label={`查看 ${item.resource.title}`}><ArrowUpRight className="size-4" /></Link><button type="button" onClick={() => void remove(item.resource.id)} disabled={removingId !== null} className="inline-flex h-9 items-center gap-1.5 text-sm text-[#a23b2c] hover:underline disabled:opacity-50"><X className="size-4" />{removingId === item.resource.id ? "正在移除" : "移除"}</button></div></article>)}</div>}
+    </section>
+  </section>;
 }
