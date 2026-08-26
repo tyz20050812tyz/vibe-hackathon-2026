@@ -27,6 +27,8 @@ function resource(id: string, title = `Resource ${id.slice(0, 4)}`) {
     type: "book",
     title,
     creators: ["Author"],
+    published_year: 2026,
+    languages: ["en"],
     summary: "A sufficiently detailed resource summary for discovery tests.",
     cover_url: null,
     availability: "online",
@@ -272,6 +274,8 @@ describe("discovery service", () => {
     expect(result.items).toEqual([
       expect.objectContaining({
         id: targetA,
+        publishedYear: 2026,
+        languages: ["en"],
         relationType: "unexpected_bridge",
         explanation: unexpected.explanation,
         strength: 4,

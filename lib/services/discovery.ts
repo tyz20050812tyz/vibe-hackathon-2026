@@ -239,7 +239,7 @@ type LegacyRelationRow = {
 };
 
 const legacyResourceSelect =
-  "id, slug, type, title, creators, summary, cover_url, availability, resource_tags(tag:tags(id, name, slug, category))";
+  "id, slug, type, title, creators, published_year, languages, summary, cover_url, availability, resource_tags(tag:tags(id, name, slug, category))";
 
 function legacyResource(value: unknown): ResourceListItem {
   const row = value as Partial<ResourceRow> | null;
