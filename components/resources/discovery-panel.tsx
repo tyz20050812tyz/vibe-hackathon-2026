@@ -34,7 +34,7 @@ export function DiscoveryPanel({
     }
   }, []);
   const [mode, setMode] = useState<DiscoveryMode>("surprise");
-  const [useSourceFilters, setUseSourceFilters] = useState(false);
+  const [sourceMode, setSourceMode] = useState<"free" | "constrained">("free");
   const [excludedIds, setExcludedIds] = useState<string[]>([]);
   const [result, setResult] = useState<DiscoverData | null>(null);
   const [message, setMessage] = useState("");
@@ -55,7 +55,7 @@ export function DiscoveryPanel({
           originResourceId,
           mode,
           excludeResourceIds: nextExcludedIds,
-          ...(useSourceFilters && discoveryContext ? { discoveryContext } : {}),
+          ...(sourceMode === "constrained" && discoveryContext ? { discoveryContext } : {}),
         }),
       });
       const body = await response.json() as DiscoverResponse;
@@ -92,7 +92,7 @@ export function DiscoveryPanel({
           <button key={value} type="button" onClick={() => setMode(value)} aria-pressed={mode === value} className={`border px-3 py-1.5 text-sm ${mode === value ? "border-[#254a42] bg-[#254a42] text-[#fff8e9]" : "border-[#254a42]/30 text-[#254a42] hover:bg-[#e4e7d4]"}`}>{modeLabels[value]}</button>
         ))}
       </div>
-      {discoveryContext ? <label className="mt-4 flex items-center gap-2 text-sm text-[#45554f]"><input type="checkbox" checked={useSourceFilters} onChange={(event) => setUseSourceFilters(event.target.checked)} />在当前筛选内偏离</label> : null}
+      <fieldset className="mt-4"><legend className="text-sm text-[#52625d]">发现范围</legend><div className="mt-2 flex flex-wrap gap-2">{(["free", "constrained"] as const).map((value) => { const available = value === "free" || Boolean(discoveryContext); const label = value === "free" ? "自由偏离" : "在当前筛选内偏离"; return <button key={value} type="button" disabled={!available} onClick={() => setSourceMode(value)} aria-pressed={sourceMode === value} className={`border px-3 py-1.5 text-sm ${sourceMode === value ? "border-[#254a42] bg-[#254a42] text-[#fff8e9]" : "border-[#254a42]/30 text-[#254a42] hover:bg-[#e4e7d4]"} disabled:cursor-not-allowed disabled:opacity-45`}>{label}</button>; })}</div>{!discoveryContext ? <p className="mt-2 text-xs text-[#78837c]">本次从公共目录进入，仅可自由偏离。</p> : null}</fieldset>
       <button type="button" onClick={() => void discover()} disabled={busy} className="mt-5 inline-flex h-10 items-center gap-2 border border-[#254a42] px-4 text-sm text-[#254a42] enabled:hover:bg-[#254a42] enabled:hover:text-[#fff8e9] disabled:opacity-60"><Compass className="size-4" />{busy ? "正在寻找" : "开始发现"}</button>
       {message ? <p className="mt-3 text-sm text-[#a23b2c]" role="status">{message}</p> : null}
       {result && !result.recommendation ? <p className="mt-5 text-sm text-[#52625d]">{result.constrainedBySourceFilters ? "当前筛选范围内没有另一条路径。" : "这条线索暂时没有可继续偏离的资源。"}</p> : null}
