@@ -131,6 +131,33 @@ export type ReplaceReadingProfileRequest = {
   consent: true;
 };
 
+export type ClearReadingProfileData = {
+  cleared: true;
+};
+
+export type DiscoverRequest = {
+  originResourceId: string;
+  mode?: DiscoveryMode;
+  excludeResourceIds?: string[];
+  discoveryContext?: string;
+};
+
+export type DiscoveryContextPayload = {
+  version: 1;
+  originSlug: string;
+  filters: Pick<
+    SearchResourcesQuery,
+    | "tag"
+    | "languages"
+    | "yearFrom"
+    | "yearTo"
+    | "types"
+    | "availabilities"
+  >;
+  issuedAt: number;
+  expiresAt: number;
+};
+
 export type DiscoverRecommendation = {
   resource: ResourceListItem;
   relationExplanation: string;
@@ -155,4 +182,7 @@ export type DeleteSavedResourceResponse =
   | ApiSuccess<{ resourceId: string }>
   | ApiFailure;
 export type ReadingProfileResponse = ApiSuccess<ReadingProfileData> | ApiFailure;
+export type ClearReadingProfileResponse =
+  | ApiSuccess<ClearReadingProfileData>
+  | ApiFailure;
 export type DiscoverResponse = ApiSuccess<DiscoverData> | ApiFailure;

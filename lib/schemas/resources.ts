@@ -82,7 +82,7 @@ export const savedResourceParamsSchema = z
 
 const favoriteBookSchema = z.object({
   title: z.string().trim().min(1, "喜欢的书名不能为空。").max(120),
-  author: z.string().trim().max(80).optional().transform((value) => value || undefined),
+  author: z.string().trim().max(80).optional().transform((value) => value || null),
 }).strict();
 
 export const replaceReadingProfileSchema = z.object({
@@ -103,6 +103,60 @@ export const discoverRequestSchema = z.object({
   discoveryContext: z.string().min(1).max(2048).optional(),
 }).strict();
 
+const discoveryContextFiltersSchema = z
+  .object({
+    tag: slugSchema.optional(),
+    languages: uniqueValues(resourceLanguageSchema, 3).optional(),
+    yearFrom: z.number().int().min(1000).max(2100).optional(),
+    yearTo: z.number().int().min(1000).max(2100).optional(),
+    types: uniqueValues(resourceTypeSchema, 4).optional(),
+    availabilities: uniqueValues(availabilitySchema, 4).optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.yearFrom && value.yearTo && value.yearFrom > value.yearTo) {
+      context.addIssue({
+        code: "custom",
+        path: ["yearFrom"],
+        message: "起始年份不能晚于结束年份。",
+      });
+    }
+    if (
+      !value.tag &&
+      !value.languages?.length &&
+      value.yearFrom === undefined &&
+      value.yearTo === undefined &&
+      !value.types?.length &&
+      !value.availabilities?.length
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "发现上下文必须包含至少一个结构化硬筛选。",
+      });
+    }
+  });
+
+export const DISCOVERY_CONTEXT_TTL_MS = 5 * 60 * 1000;
+
+export const discoveryContextPayloadSchema = z
+  .object({
+    version: z.literal(1),
+    originSlug: slugSchema,
+    filters: discoveryContextFiltersSchema,
+    issuedAt: z.number().int().nonnegative(),
+    expiresAt: z.number().int().positive(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.expiresAt - value.issuedAt !== DISCOVERY_CONTEXT_TTL_MS) {
+      context.addIssue({
+        code: "custom",
+        path: ["expiresAt"],
+        message: "发现上下文有效期必须为 5 分钟。",
+      });
+    }
+  });
+
 export type SearchResourcesQueryInput = z.output<
   typeof searchResourcesQuerySchema
 >;
@@ -111,3 +165,6 @@ export type CreateSavedResourceInput = z.output<
 >;
 export type ReplaceReadingProfileInput = z.output<typeof replaceReadingProfileSchema>;
 export type DiscoverRequestInput = z.output<typeof discoverRequestSchema>;
+export type DiscoveryContextPayloadInput = z.output<
+  typeof discoveryContextPayloadSchema
+>;
