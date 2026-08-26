@@ -51,4 +51,18 @@ describe("DiscoveryPanel", () => {
     expect((screen.getByRole("button", { name: "自由偏离" }) as HTMLButtonElement).disabled).toBe(false);
     expect((screen.getByRole("button", { name: "在当前筛选内偏离" }) as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it("falls back to free discovery when the signed context has expired", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      data: null,
+      error: { code: "INVALID_DISCOVERY_CONTEXT", message: "expired" },
+    }), { status: 400 })));
+    render(<DiscoveryPanel originResourceId="11111111-1111-4111-8111-111111111111" discoveryContext="expired-context" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "在当前筛选内偏离" }));
+    fireEvent.click(screen.getByRole("button", { name: "开始发现" }));
+
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("已切回自由偏离"));
+    expect(screen.getByRole("button", { name: "自由偏离" }).getAttribute("aria-pressed")).toBe("true");
+  });
 });

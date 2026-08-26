@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, LogOut, NotebookPen, SlidersHorizontal, X } from "lucide-react";
+import { ArrowUpRight, LogOut, NotebookPen, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -9,6 +9,7 @@ import { AuthForm } from "@/components/auth/auth-form";
 import { DiscoveryCard } from "@/components/library/discovery-card";
 import { LibraryStats, type LibraryStatsData } from "@/components/library/library-stats";
 import { ProfileSummary } from "@/components/library/profile-summary";
+import { ReadingPreferencePrompt } from "@/components/library/reading-preference-prompt";
 import { ResourceCover } from "@/components/resources/resource-cover";
 import { availabilityLabel, resourceTypeLabel } from "@/lib/resource-presentation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -212,7 +213,7 @@ export function LibraryContent() {
 
   return <section className="space-y-10">
     <ProfileSummary profile={profile} enabled={profileEnabled} onSave={saveProfile} />
-    {readingPreferenceStatus ? <div className="flex flex-wrap items-center justify-between gap-4 border border-[#a23b2c]/35 bg-[#f0efd9] p-4"><div><p className="text-sm font-medium">{readingPreferenceStatus === "complete" ? "阅读偏好已启用" : "完成阅读偏好，开启“与你相关”排序"}</p><p className="mt-1 text-xs leading-5 text-[#52625d]">这不会影响书架、收藏或公共目录浏览。</p></div><Link href="/onboarding" className="inline-flex items-center gap-1 border border-[#254a42] px-3 py-2 text-sm text-[#254a42] hover:bg-[#254a42] hover:text-[#fff8e9]"><SlidersHorizontal className="size-4" />{readingPreferenceStatus === "complete" ? "编辑或清空" : "开始设置"}</Link></div> : null}
+    <ReadingPreferencePrompt status={readingPreferenceStatus} />
     <LibraryStats stats={stats} />
     <DiscoveryCard {...discovery} onRetry={() => void loadDiscovery(requestEpoch.current)} />
     <section>
