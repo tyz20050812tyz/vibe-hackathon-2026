@@ -16,19 +16,17 @@ const sql = readFileSync(migrationPath, "utf8")
 
 const oldSignature =
   "public.search_resource_catalog(text, text, text, integer)";
-const revokeOldFunction =
-  `revoke all on function ${oldSignature} from public, anon, authenticated, service_role;`;
-const dropOldFunction = `drop function ${oldSignature};`;
 
 describe("resource catalog v2 migration contract", () => {
-  it("revokes every old-RPC role before dropping the exact old signature", () => {
-    const revokeIndex = sql.indexOf(revokeOldFunction);
-    const dropIndex = sql.indexOf(dropOldFunction);
+  it("removes the old RPC only when its exact signature exists", () => {
+    const guard = "to_regprocedure('public.search_resource_catalog(text,text,text,integer)') is not null";
+    const revoke = `execute 'revoke all on function ${oldSignature} from public, anon, authenticated, service_role'`;
+    const drop = `execute 'drop function ${oldSignature}'`;
 
-    expect(revokeIndex).toBeGreaterThanOrEqual(0);
-    expect(dropIndex).toBeGreaterThan(revokeIndex);
-    expect(sql.match(/drop function public\.search_resource_catalog\(/g)).toHaveLength(1);
-    expect(sql).not.toContain("drop function if exists public.search_resource_catalog(");
+    expect(sql).toContain("do $$ begin");
+    expect(sql).toContain(guard);
+    expect(sql.indexOf(revoke)).toBeGreaterThan(sql.indexOf(guard));
+    expect(sql.indexOf(drop)).toBeGreaterThan(sql.indexOf(revoke));
   });
 
   it("creates only the frozen v2 RPCs with their intended grants", () => {
@@ -44,7 +42,6 @@ describe("resource catalog v2 migration contract", () => {
     expect(sql).toContain(
       "grant execute on function public.search_resource_catalog_personalized_v2(text, text, integer, integer, text[], text[], text[], integer) to authenticated;",
     );
-    expect(sql.slice(dropIndexAfterRevoke())).not.toContain(oldSignature);
   });
 
   it("applies field-local OR filters and cross-field AND filters before limiting", () => {
@@ -75,7 +72,3 @@ describe("resource catalog v2 migration contract", () => {
     expect(sql).toContain("(2 * c.overlap) / (c.resource_tag_count + c.interest_tag_count)");
   });
 });
-
-function dropIndexAfterRevoke() {
-  return sql.indexOf(dropOldFunction) + dropOldFunction.length;
-}

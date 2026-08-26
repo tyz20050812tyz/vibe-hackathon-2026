@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { readDiscoveryContext } from "@/lib/discovery-context";
+import { narrateWithDeepSeek } from "@/lib/services/deepseek-narration";
 import type { DiscoverQueryInput } from "@/lib/schemas/discovery";
 import type { DiscoverRequestInput } from "@/lib/schemas/resources";
 import {
@@ -57,7 +58,11 @@ type RelationRow = {
   target: ResourceRow | null;
 };
 type TagRow = { id: string; name: string; slug: string; category: TagCategory };
-type Preference = { level: "gentle" | "balanced" | "bold"; ids: Set<string> };
+type Preference = {
+  level: "gentle" | "balanced" | "bold";
+  ids: Set<string>;
+  tagNames: string[];
+};
 
 const relationTypesByMode: Record<DiscoverRequestInput["mode"], RelationType[]> = {
   extend: ["same_theme"],
@@ -153,22 +158,27 @@ async function preferenceFor(supabase: SupabaseClient, userId: string | null): P
 
   const { data: links, error: linksError } = await supabase
     .from("reader_profile_tags")
-    .select("tag_id")
+    .select("tag_id, tag:tags(name)")
     .eq("user_id", userId);
   if (linksError) throw new DiscoveryError("SUPABASE_UNAVAILABLE", "无法读取阅读偏好。");
 
   const ids = new Set((links ?? []).map((link) => link.tag_id));
-  return { level: profile.exploration_level as Preference["level"], ids };
+  const tagNames = (links ?? []).flatMap((link) => {
+    const tag = link.tag as { name?: unknown } | null;
+    return tag && typeof tag.name === "string" ? [tag.name] : [];
+  });
+  return { level: profile.exploration_level as Preference["level"], ids, tagNames };
 }
 
 export async function discover(
   input: DiscoverRequestInput,
   accessToken?: string,
+  requesterIdentity = "anonymous",
 ): Promise<DiscoverData> {
   const { supabase, userId } = await authenticatedClient(accessToken);
   const { data: origin, error: originError } = await supabase
     .from("resources")
-    .select("id, slug")
+    .select("id, slug, title, summary, tags:resource_tags(tag:tags(id, name, slug, category))")
     .eq("id", input.originResourceId)
     .maybeSingle();
   if (originError) throw new DiscoveryError("SUPABASE_UNAVAILABLE", "无法读取发现起点。");
@@ -216,6 +226,42 @@ export async function discover(
     }
   }
 
+  const templateNarration = selected?.relation.explanation;
+  const narration = selected
+    ? await narrateWithDeepSeek({
+      originResourceId: origin.id,
+      targetResourceId: selected.target.id,
+      relationId: selected.relation.id,
+      relationType: selected.relation.relation_type,
+      relationExplanation: selected.relation.explanation,
+      mode: input.mode,
+      personalization: preference ? "profile" : "catalog",
+      origin: {
+        title: typeof origin.title === "string" ? origin.title : origin.slug,
+        summary: typeof origin.summary === "string" ? origin.summary : selected.relation.explanation,
+        tags: Array.isArray(origin.tags)
+          ? origin.tags.flatMap((link) => {
+            const tag = (link as { tag?: { name?: unknown } }).tag;
+            return tag && typeof tag.name === "string" ? [tag.name] : [];
+          })
+          : [],
+      },
+      target: {
+        title: selected.target.title,
+        summary: selected.target.summary,
+        tags: selected.target.tags.map((tag) => tag.name),
+      },
+      ...(preference ? {
+        readingLens: {
+          interestTags: preference.tagNames,
+          explorationLevel: preference.level,
+        },
+      } : {}),
+      identity: userId ?? requesterIdentity,
+      authenticated: Boolean(userId),
+    })
+    : undefined;
+
   return {
     originResourceId: origin.id,
     selectedMode: input.mode,
@@ -225,8 +271,8 @@ export async function discover(
     recommendation: selected ? {
       resource: selected.target,
       relationExplanation: selected.relation.explanation,
-      narration: selected.relation.explanation,
-      narrationSource: "template",
+      narration: narration?.narration ?? templateNarration ?? selected.relation.explanation,
+      narrationSource: narration?.source ?? "template",
     } : null,
   };
 }

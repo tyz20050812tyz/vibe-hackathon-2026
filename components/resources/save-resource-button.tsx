@@ -11,7 +11,7 @@ export function SaveResourceButton({ resourceId }: { resourceId: string }) {
   const save = async () => {
     setBusy(true); setMessage("");
     try {
-      const response = await fetch("/api/saved-resources", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ resourceId }) });
+      const response = await fetch("/api/saved-resources", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ resourceId, note: note.trim() || undefined }) });
       const body = await response.json() as { error?: { code: string; message: string } };
       if (response.status === 401) { setMessage("请先到个人书架登录，再收藏资源。"); return; }
       if (response.ok || body.error?.code === "ALREADY_SAVED") { setLabel("已收藏"); setMessage(body.error?.code === "ALREADY_SAVED" ? "已在你的书架中。" : "已保存到个人书架。"); return; }

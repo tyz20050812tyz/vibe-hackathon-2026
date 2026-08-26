@@ -1,6 +1,14 @@
-revoke all on function public.search_resource_catalog(text, text, text, integer)
-  from public, anon, authenticated, service_role;
-drop function public.search_resource_catalog(text, text, text, integer);
+-- The v1 RPC can be absent on a newly provisioned database, while it exists on
+-- upgraded projects. Guard both operations so this migration is repeatable in
+-- either state.
+do $$
+begin
+  if to_regprocedure('public.search_resource_catalog(text,text,text,integer)') is not null then
+    execute 'revoke all on function public.search_resource_catalog(text, text, text, integer) from public, anon, authenticated, service_role';
+    execute 'drop function public.search_resource_catalog(text, text, text, integer)';
+  end if;
+end;
+$$;
 
 create or replace function public.search_resource_catalog_v2(
   p_q text default null,
