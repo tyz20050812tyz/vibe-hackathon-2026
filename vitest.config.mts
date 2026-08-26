@@ -3,9 +3,18 @@ import { fileURLToPath } from "node:url";
 
 export default defineConfig({
   resolve: {
-    alias: {
-      "@": fileURLToPath(new URL(".", import.meta.url)),
-    },
+    alias: [
+      {
+        find: /^server-only$/,
+        replacement: fileURLToPath(
+          new URL("./tests/stubs/server-only.ts", import.meta.url),
+        ),
+      },
+      {
+        find: "@",
+        replacement: fileURLToPath(new URL(".", import.meta.url)),
+      },
+    ],
   },
   test: {
     environment: "node",
