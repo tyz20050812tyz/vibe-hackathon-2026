@@ -56,5 +56,5 @@ export function removeSearchFilter(filters: SearchResourcesQuery, filter: { fiel
 }
 
 export function clearSearchFilters(filters: SearchResourcesQuery): SearchResourcesQuery {
-  return { q: filters.q, sort: filters.sort, limit: filters.limit };
+  return { q: filters.q, sort: filters.sort };
 }
