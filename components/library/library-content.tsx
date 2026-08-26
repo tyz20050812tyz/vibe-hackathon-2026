@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, LogOut, NotebookPen, X } from "lucide-react";
+import { ArrowUpRight, LogOut, NotebookPen, SlidersHorizontal, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -11,6 +11,7 @@ import { LibraryStats, type LibraryStatsData } from "@/components/library/librar
 import { ProfileSummary } from "@/components/library/profile-summary";
 import { ResourceCover } from "@/components/resources/resource-cover";
 import { availabilityLabel, resourceTypeLabel } from "@/lib/resource-presentation";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { DiscoveryData, DiscoveryItem } from "@/lib/types/discovery";
 import type { ApiFailure, ApiSuccess } from "@/lib/types/api";
 import type { ProfileOverview, ProfileUpdateRequest, ReaderProfile } from "@/lib/types/profile";
@@ -61,6 +62,7 @@ export function LibraryContent() {
   const [message, setMessage] = useState("");
   const [profile, setProfile] = useState<ReaderProfile | null>(null);
   const [profileEnabled, setProfileEnabled] = useState(false);
+  const [readingPreferenceStatus, setReadingPreferenceStatus] = useState<"complete" | "incomplete" | null>(null);
   const [stats, setStats] = useState<LibraryStatsData>(statsFrom([]));
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
@@ -68,6 +70,17 @@ export function LibraryContent() {
   const requestEpoch = useRef(0);
   const discoverySequence = useRef(0);
   const savedLoadedEpoch = useRef<number | null>(null);
+  const supabaseClient = useMemo(() => { try { return createSupabaseBrowserClient(); } catch { return null; } }, []);
+
+  const loadReadingPreference = useCallback(async (epoch: number) => {
+    try {
+      const session = supabaseClient ? (await supabaseClient.auth.getSession()).data.session : null;
+      if (!session) { if (requestEpoch.current === epoch) setReadingPreferenceStatus(null); return; }
+      const response = await fetch("/api/reader-profile", { cache: "no-store", headers: { Authorization: `Bearer ${session.access_token}` } });
+      const body = await response.json() as { data?: { status: "complete" | "incomplete" } };
+      if (requestEpoch.current === epoch && response.ok) setReadingPreferenceStatus(body.data?.status ?? null);
+    } catch { if (requestEpoch.current === epoch) setReadingPreferenceStatus(null); }
+  }, [supabaseClient]);
 
   const loadProfile = useCallback(async (epoch: number) => {
     try {
@@ -107,9 +120,11 @@ export function LibraryContent() {
     setMessage("");
     setProfile(null);
     setProfileEnabled(false);
+    setReadingPreferenceStatus(null);
     setDiscovery({ items: [], sourceTitle: null, loading: true, error: null });
     savedLoadedEpoch.current = null;
     void loadProfile(epoch);
+    void loadReadingPreference(epoch);
     void loadDiscovery(epoch);
     try {
       const response = await fetch("/api/saved-resources", { cache: "no-store" });
@@ -127,7 +142,7 @@ export function LibraryContent() {
       setMessage(error instanceof Error ? error.message : "无法读取个人书架。");
       setState("error");
     }
-  }, [loadDiscovery, loadProfile]);
+  }, [loadDiscovery, loadProfile, loadReadingPreference]);
 
   useEffect(() => {
     const task = window.setTimeout(() => { void load(); }, 0);
@@ -197,6 +212,7 @@ export function LibraryContent() {
 
   return <section className="space-y-10">
     <ProfileSummary profile={profile} enabled={profileEnabled} onSave={saveProfile} />
+    {readingPreferenceStatus ? <div className="flex flex-wrap items-center justify-between gap-4 border border-[#a23b2c]/35 bg-[#f0efd9] p-4"><div><p className="text-sm font-medium">{readingPreferenceStatus === "complete" ? "阅读偏好已启用" : "完成阅读偏好，开启“与你相关”排序"}</p><p className="mt-1 text-xs leading-5 text-[#52625d]">这不会影响书架、收藏或公共目录浏览。</p></div><Link href="/onboarding" className="inline-flex items-center gap-1 border border-[#254a42] px-3 py-2 text-sm text-[#254a42] hover:bg-[#254a42] hover:text-[#fff8e9]"><SlidersHorizontal className="size-4" />{readingPreferenceStatus === "complete" ? "编辑或清空" : "开始设置"}</Link></div> : null}
     <LibraryStats stats={stats} />
     <DiscoveryCard {...discovery} onRetry={() => void loadDiscovery(requestEpoch.current)} />
     <section>
