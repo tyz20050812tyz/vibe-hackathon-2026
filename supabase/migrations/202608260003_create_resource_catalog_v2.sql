@@ -1,4 +1,6 @@
-drop function if exists public.search_resource_catalog(text, text, text, integer);
+revoke all on function public.search_resource_catalog(text, text, text, integer)
+  from public, anon, authenticated, service_role;
+drop function public.search_resource_catalog(text, text, text, integer);
 
 create or replace function public.search_resource_catalog_v2(
   p_q text default null,
