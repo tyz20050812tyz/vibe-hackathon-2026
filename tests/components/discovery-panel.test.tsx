@@ -65,4 +65,28 @@ describe("DiscoveryPanel", () => {
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("已切回自由偏离"));
     expect(screen.getByRole("button", { name: "自由偏离" }).getAttribute("aria-pressed")).toBe("true");
   });
+
+  it("labels the narration source separately from the curated relationship explanation", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      data: {
+        originResourceId: "11111111-1111-4111-8111-111111111111",
+        selectedMode: "surprise",
+        usedRelationType: "unexpected_bridge",
+        constrainedBySourceFilters: false,
+        personalization: "catalog",
+        recommendation: {
+          resource: { id: "22222222-2222-4222-8222-222222222222", slug: "next-read", type: "book", title: "下一本", creators: [], publishedYear: null, languages: ["zh"], summary: "", coverUrl: null, availability: "online", tags: [] },
+          relationExplanation: "这是一条策展关系说明。",
+          narration: "从这里继续阅读。",
+          narrationSource: "deepseek",
+        },
+      },
+    }), { status: 200 })));
+    render(<DiscoveryPanel originResourceId="11111111-1111-4111-8111-111111111111" discoveryContext={null} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "开始发现" }));
+
+    await waitFor(() => expect(screen.getByText("DeepSeek 生成引导")).toBeTruthy());
+    expect(screen.getByText("这是一条策展关系说明。")).toBeTruthy();
+  });
 });

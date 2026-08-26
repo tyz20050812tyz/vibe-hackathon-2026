@@ -90,6 +90,23 @@ describe("discovery context", () => {
   });
 
   it.each([
+    ["shorter", DISCOVERY_CONTEXT_TTL_MS - 1],
+    ["longer", DISCOVERY_CONTEXT_TTL_MS + 1],
+  ])("rejects a %s-than-five-minute TTL", (_name, ttl) => {
+    const issuedAt = now.getTime();
+    expect(
+      readDiscoveryContext(
+        encrypt({
+          ...payload({ tag: "design" }),
+          issuedAt,
+          expiresAt: issuedAt + ttl,
+        }),
+        "the-creative-act",
+      ),
+    ).toBeNull();
+  });
+
+  it.each([
     ["empty hard filters", {}],
     ["reversed years", { yearFrom: 2000, yearTo: 1999 }],
     ["duplicate language", { languages: ["zh", "zh"] }],

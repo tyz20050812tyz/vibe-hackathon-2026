@@ -54,12 +54,37 @@ describe("POST /api/discoveries", () => {
     expect(mocks.discover).not.toHaveBeenCalled();
   });
 
+  it("rejects oversized payloads before invoking the discovery service", async () => {
+    const response = await POST(request(JSON.stringify({ originResourceId, padding: "x".repeat(8 * 1024) })));
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.code).toBe("VALIDATION_ERROR");
+    expect(mocks.discover).not.toHaveBeenCalled();
+  });
+
   it("allows anonymous use and passes a Bearer token when present", async () => {
     await POST(request(JSON.stringify({ originResourceId })));
-    expect(mocks.discover).toHaveBeenLastCalledWith({ originResourceId, mode: "surprise" }, undefined);
+    expect(mocks.discover).toHaveBeenLastCalledWith({ originResourceId, mode: "surprise" }, undefined, "anonymous");
 
     await POST(request(JSON.stringify({ originResourceId }), "access-token"));
-    expect(mocks.discover).toHaveBeenLastCalledWith({ originResourceId, mode: "surprise" }, "access-token");
+    expect(mocks.discover).toHaveBeenLastCalledWith({ originResourceId, mode: "surprise" }, "access-token", "anonymous");
+  });
+
+  it("accepts a forwarded IP only when the deployment explicitly trusts its proxy", async () => {
+    process.env.TRUST_PROXY = "true";
+    try {
+      await POST(new Request("http://localhost/api/discoveries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Forwarded-For": "203.0.113.9, 10.0.0.1" },
+        body: JSON.stringify({ originResourceId }),
+      }));
+      expect(mocks.discover).toHaveBeenLastCalledWith(
+        { originResourceId, mode: "surprise" },
+        undefined,
+        "ip:203.0.113.9",
+      );
+    } finally {
+      delete process.env.TRUST_PROXY;
+    }
   });
 
   it("does not turn an invalid optional Bearer into a route-level 401", async () => {
