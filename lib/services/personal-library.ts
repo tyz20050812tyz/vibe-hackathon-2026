@@ -14,7 +14,7 @@ export class PersonalLibraryError extends Error {
 }
 
 type SavedRow = { note: string | null; saved_at: string; resource: unknown };
-type ResourceRow = { id: string; slug: string; type: ResourceType; title: string; creators: unknown; summary: string; cover_url: string | null; availability: Availability; resource_tags: unknown };
+type ResourceRow = { id: string; slug: string; type: ResourceType; title: string; creators: unknown; published_year: number | null; languages: Array<"zh" | "en" | "other">; summary: string; cover_url: string | null; availability: Availability; resource_tags: unknown };
 type TagRow = { id: string; name: string; slug: string; category: TagCategory };
 
 function client(accessToken: string): SupabaseClient {
@@ -31,11 +31,6 @@ function internal(message: string) { return new PersonalLibraryError("INTERNAL_E
 async function userId(supabase: SupabaseClient) {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) throw new PersonalLibraryError("UNAUTHORIZED", "登录已失效，请重新登录。");
-  const displayName = data.user.email?.split("@", 1)[0]?.slice(0, 50) || null;
-  const { error: profileError } = await supabase
-    .from("profiles")
-    .upsert({ id: data.user.id, display_name: displayName }, { onConflict: "id", ignoreDuplicates: true });
-  if (profileError) throw unavailable("无法初始化用户资料。");
   return data.user.id;
 }
 
@@ -46,10 +41,10 @@ function resourceFrom(value: unknown): ResourceListItem {
     const tag = (link as { tag?: unknown }).tag as TagRow | null;
     return tag ? [{ id: tag.id, name: tag.name, slug: tag.slug, category: tag.category }] : [];
   });
-  return { id: row.id, slug: row.slug, type: row.type, title: row.title, creators: row.creators as string[], summary: row.summary, coverUrl: row.cover_url, availability: row.availability, tags };
+  return { id: row.id, slug: row.slug, type: row.type, title: row.title, creators: row.creators as string[], publishedYear: row.published_year, languages: row.languages, summary: row.summary, coverUrl: row.cover_url, availability: row.availability, tags };
 }
 
-const savedSelect = "note, saved_at, resource:resources(id, slug, type, title, creators, summary, cover_url, availability, resource_tags(tag:tags(id, name, slug, category)))";
+const savedSelect = "note, saved_at, resource:resources(id, slug, type, title, creators, published_year, languages, summary, cover_url, availability, resource_tags(tag:tags(id, name, slug, category)))";
 
 export async function listSavedResources(accessToken: string): Promise<SavedResource[]> {
   const supabase = client(accessToken);

@@ -1,7 +1,9 @@
 -- Curated demo catalog for the "Beyond the Shelf" first phase.
 -- Run in order after:
 -- 1. 20260821_create_library_foundation.sql
--- 2. 202608210001_add_resource_catalog_search.sql
+-- 2. 202608260001_add_resource_languages.sql
+-- 3. 202608260002_create_reader_profiles.sql
+-- 4. 202608260003_create_resource_catalog_v2.sql
 -- The UI-only "演示资料" label and Mock catalog live in PR #11;
 -- this seed intentionally does not add an isDemo field to the API contract.
 -- The script is idempotent and contains no user data.
@@ -161,6 +163,24 @@ on conflict (slug) do update set
   availability = excluded.availability,
   external_url = excluded.external_url,
   is_featured = excluded.is_featured;
+
+-- Keep language metadata explicit and idempotent for the language filters.
+update public.resources as resource
+set languages = case resource.slug
+  when 'generative-art' then array['zh', 'en']::text[]
+  when 'cities-and-memory' then array['zh', 'en']::text[]
+  when 'happy-accidents' then array['zh', 'en']::text[]
+  else array['en']::text[]
+end
+where resource.slug in (
+  'the-creative-act', 'the-age-of-ai', 'how-to-create-a-mind',
+  'the-creative-mind', 'ways-of-seeing', 'the-design-of-everyday-things',
+  'the-image-of-the-city', 'the-practice-of-everyday-life', 'invisible-cities',
+  'on-photography', 'the-arcades-project', 'the-library-of-babel',
+  'the-order-of-things', 'the-organization-of-knowledge', 'the-pleasures-of-counting',
+  'the-myth-of-sisyphus', 'the-art-of-noticing', 'generative-art',
+  'cities-and-memory', 'happy-accidents'
+);
 
 insert into public.resource_tags (resource_id, tag_id)
 select resource.id, tag.id

@@ -1,12 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { createSupabasePublicServerClient } from "@/lib/supabase/server";
+import {
+  createSupabaseAuthenticatedServerClient,
+  createSupabasePublicServerClient,
+} from "@/lib/supabase/server";
 import type { SearchResourcesQueryInput } from "@/lib/schemas/resources";
 import type {
   Availability,
   GetResourceData,
   Resource,
   ResourceListItem,
+  ResourceLanguage,
   ResourceType,
   SearchResourcesData,
   Tag,
@@ -41,6 +45,8 @@ type ResourceListRow = {
   type: ResourceType;
   title: string;
   creators: unknown;
+  published_year: number | null;
+  languages: ResourceLanguage[];
   summary: string;
   cover_url: string | null;
   availability: Availability;
@@ -122,6 +128,8 @@ function listItemFrom(row: ResourceListRow, tags: Tag[]): ResourceListItem {
     type: row.type,
     title: row.title,
     creators: creatorsFrom(row.creators),
+    publishedYear: row.published_year,
+    languages: row.languages,
     summary: row.summary,
     coverUrl: row.cover_url,
     availability: row.availability,
@@ -200,14 +208,39 @@ async function tagsByResourceId(
 
 export async function searchResources(
   query: SearchResourcesQueryInput,
+  accessToken?: string,
 ): Promise<SearchResourcesData> {
-  const supabase = publicClient();
-  const { data, error } = await supabase.rpc("search_resource_catalog", {
+  let supabase = publicClient();
+  let personalized = false;
+
+  if (query.sort === "personalized" && accessToken) {
+    let authenticated: SupabaseClient;
+    try { authenticated = createSupabaseAuthenticatedServerClient(accessToken); }
+    catch { throw new ResourceCatalogError("CONFIGURATION_ERROR", "Supabase 用户服务配置不完整。"); }
+    const { data: user, error: userError } = await authenticated.auth.getUser();
+    if (!userError && user.user) {
+      const { data: profileIsComplete, error: profileError } = await authenticated
+        .rpc("reader_profile_is_complete");
+
+      if (profileError) {
+        throw unavailable("无法读取阅读偏好。");
+      }
+      if (profileIsComplete === true) { supabase = authenticated; personalized = true; }
+    }
+  }
+  const { data, error } = await supabase.rpc(
+    personalized ? "search_resource_catalog_personalized_v2" : "search_resource_catalog_v2",
+    {
     p_q: query.q ?? null,
     p_tag: query.tag ?? null,
-    p_type: query.type ?? null,
+    p_year_from: query.yearFrom ?? null,
+    p_year_to: query.yearTo ?? null,
+    p_languages: query.languages ?? null,
+    p_types: query.types ?? null,
+    p_availabilities: query.availabilities ?? null,
     p_limit: query.limit,
-  });
+    },
+  );
 
   if (error) {
     throw unavailable("无法搜索资源目录。");
@@ -220,8 +253,14 @@ export async function searchResources(
     appliedFilters: {
       q: query.q ?? "",
       tag: query.tag ?? null,
-      type: query.type ?? null,
+      languages: query.languages ?? [],
+      yearFrom: query.yearFrom ?? null,
+      yearTo: query.yearTo ?? null,
+      types: query.types ?? [],
+      availabilities: query.availabilities ?? [],
     },
+    appliedSort: personalized ? "personalized" : "catalog",
+    personalization: personalized ? "profile" : "catalog",
   };
 }
 
@@ -232,7 +271,7 @@ export async function getResourceBySlug(
   const { data: resourceData, error: resourceError } = await supabase
     .from("resources")
     .select(
-      "id, slug, type, title, subtitle, creators, published_year, summary, cover_url, location, availability, external_url, is_featured",
+      "id, slug, type, title, subtitle, creators, published_year, languages, summary, cover_url, location, availability, external_url, is_featured",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -276,7 +315,7 @@ export async function getResourceBySlug(
   const { data: relatedData, error: relatedError } = await supabase
     .from("resources")
     .select(
-      "id, slug, type, title, creators, summary, cover_url, availability",
+      "id, slug, type, title, creators, published_year, languages, summary, cover_url, availability",
     )
     .in("id", targetIds);
 
