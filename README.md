@@ -33,10 +33,12 @@ npm run dev
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
-LLM_API_KEY=
+DISCOVERY_CONTEXT_ENCRYPTION_KEY=
+DEEPSEEK_API_KEY=
+DEEPSEEK_MODEL=
 ```
 
-`.env.local` 不得提交。只有浏览器安全的配置可以使用 `NEXT_PUBLIC_` 前缀；`SUPABASE_SERVICE_ROLE_KEY` 和 LLM key 只允许在服务端代码中读取。
+`.env.local` 不得提交。只有浏览器安全的配置可以使用 `NEXT_PUBLIC_` 前缀；`SUPABASE_SERVICE_ROLE_KEY`、`DISCOVERY_CONTEXT_ENCRYPTION_KEY` 和 DeepSeek 配置只允许在服务端代码中读取。`DISCOVERY_CONTEXT_ENCRYPTION_KEY` 必须是 32 字节随机值的 Base64 编码，可通过 `openssl rand -base64 32` 生成。
 
 ## 验证命令
 

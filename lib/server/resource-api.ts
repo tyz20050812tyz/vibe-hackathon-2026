@@ -5,9 +5,7 @@ import type { SearchResourcesQuery } from "@/lib/types/resources";
 export async function searchResourceCatalog(query: SearchResourcesQuery = {}) {
   try {
     const parsed = searchResourcesQuerySchema.safeParse(query);
-    if (!parsed.success) {
-      return { data: null, error: parsed.error.issues[0]?.message ?? "查询参数不合法。" };
-    }
+    if (!parsed.success) return { data: null, error: parsed.error.issues[0]?.message ?? "搜索条件不合法。" };
     return { data: await searchResources(parsed.data), error: null };
   } catch (error) {
     return {

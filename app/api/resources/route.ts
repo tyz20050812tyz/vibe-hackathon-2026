@@ -1,28 +1,22 @@
 import type { NextRequest } from "next/server";
 
 import { apiFailure, apiSuccess } from "@/lib/api-response";
+import { parseSearchFilters } from "@/lib/catalog-filters";
 import {
   ResourceCatalogError,
   searchResources,
 } from "@/lib/services/resource-catalog";
-import { searchResourcesQuerySchema } from "@/lib/schemas/resources";
 
 export async function GET(request: NextRequest) {
   const requestId = crypto.randomUUID();
-  const parsed = searchResourcesQuerySchema.safeParse(
-    Object.fromEntries(request.nextUrl.searchParams),
-  );
-
-  if (!parsed.success) {
-    return apiFailure(
-      "VALIDATION_ERROR",
-      parsed.error.issues[0]?.message ?? "查询参数不合法。",
-      requestId,
-    );
-  }
+  let parsed: ReturnType<typeof parseSearchFilters>;
+  try { parsed = parseSearchFilters(request.nextUrl.searchParams); }
+  catch (error) { return apiFailure("VALIDATION_ERROR", error instanceof Error ? error.message : "查询参数不合法。", requestId); }
 
   try {
-    return apiSuccess(await searchResources(parsed.data), requestId);
+    const authorization = request.headers.get("authorization");
+    const token = authorization?.startsWith("Bearer ") ? authorization.slice(7) : undefined;
+    return apiSuccess(await searchResources(parsed, token), requestId);
   } catch (error) {
     if (error instanceof ResourceCatalogError) {
       return apiFailure(error.code, error.message, requestId);

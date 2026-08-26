@@ -1,6 +1,10 @@
 import type { ApiFailure, ApiSuccess } from "@/lib/types/api";
 
 export type ResourceType = "book" | "paper" | "talk" | "collection";
+export type ResourceLanguage = "zh" | "en" | "other";
+export type SearchSort = "catalog" | "personalized";
+export type ExplorationLevel = "gentle" | "balanced" | "bold";
+export type DiscoveryMode = "extend" | "challenge" | "context" | "surprise";
 
 export type Availability =
   | "available"
@@ -31,6 +35,7 @@ export type Resource = {
   subtitle: string | null;
   creators: string[];
   publishedYear: number | null;
+  languages: ResourceLanguage[];
   summary: string;
   coverUrl: string | null;
   location: string | null;
@@ -47,6 +52,8 @@ export type ResourceListItem = Pick<
   | "type"
   | "title"
   | "creators"
+  | "publishedYear"
+  | "languages"
   | "summary"
   | "coverUrl"
   | "availability"
@@ -71,7 +78,12 @@ export type SavedResource = {
 export type SearchResourcesQuery = {
   q?: string;
   tag?: string;
-  type?: ResourceType;
+  languages?: ResourceLanguage[];
+  yearFrom?: number;
+  yearTo?: number;
+  types?: ResourceType[];
+  availabilities?: Availability[];
+  sort?: SearchSort;
   limit?: number;
 };
 
@@ -81,8 +93,14 @@ export type SearchResourcesData = {
   appliedFilters: {
     q: string;
     tag: string | null;
-    type: ResourceType | null;
+    languages: ResourceLanguage[];
+    yearFrom: number | null;
+    yearTo: number | null;
+    types: ResourceType[];
+    availabilities: Availability[];
   };
+  appliedSort: SearchSort;
+  personalization: "profile" | "catalog";
 };
 
 export type GetResourceData = {
@@ -95,6 +113,40 @@ export type CreateSavedResourceRequest = {
   note?: string;
 };
 
+export type ReadingProfile = {
+  explorationLevel: ExplorationLevel;
+  interestTags: Tag[];
+  favoriteBooks: Array<{ id: string; title: string; author: string | null }>;
+  onboardingCompletedAt: string;
+};
+
+export type ReadingProfileData =
+  | { status: "incomplete"; preferences: null }
+  | { status: "complete"; preferences: ReadingProfile };
+
+export type ReplaceReadingProfileRequest = {
+  interestTagIds: string[];
+  explorationLevel: ExplorationLevel;
+  favoriteBooks?: Array<{ title: string; author?: string }>;
+  consent: true;
+};
+
+export type DiscoverRecommendation = {
+  resource: ResourceListItem;
+  relationExplanation: string;
+  narration: string;
+  narrationSource: "template" | "deepseek";
+};
+
+export type DiscoverData = {
+  originResourceId: string;
+  selectedMode: DiscoveryMode;
+  usedRelationType: RelationType | null;
+  constrainedBySourceFilters: boolean;
+  personalization: "profile" | "catalog";
+  recommendation: DiscoverRecommendation | null;
+};
+
 export type SearchResourcesResponse = ApiSuccess<SearchResourcesData> | ApiFailure;
 export type GetResourceResponse = ApiSuccess<GetResourceData> | ApiFailure;
 export type ListSavedResourcesResponse = ApiSuccess<SavedResource[]> | ApiFailure;
@@ -102,3 +154,5 @@ export type CreateSavedResourceResponse = ApiSuccess<SavedResource> | ApiFailure
 export type DeleteSavedResourceResponse =
   | ApiSuccess<{ resourceId: string }>
   | ApiFailure;
+export type ReadingProfileResponse = ApiSuccess<ReadingProfileData> | ApiFailure;
+export type DiscoverResponse = ApiSuccess<DiscoverData> | ApiFailure;
