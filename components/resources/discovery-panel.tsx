@@ -61,7 +61,10 @@ export function DiscoveryPanel({
       const body = await response.json() as DiscoverResponse;
       if (!response.ok || !body.data) {
         setResult(null);
-        setMessage("error" in body && body.error ? body.error.message : "暂时无法找到下一条阅读线索。");
+        if ("error" in body && body.error?.code === "INVALID_DISCOVERY_CONTEXT") {
+          setSourceMode("free");
+          setMessage("当前筛选上下文已失效，已切回自由偏离，请重试。");
+        } else setMessage("error" in body && body.error ? body.error.message : "暂时无法找到下一条阅读线索。");
         return;
       }
       setResult(body.data);
