@@ -38,4 +38,14 @@ describe("createBookSimilarityGraph", () => {
     expect(graph.nodes[1]?.reasons).toContain("存在人工策展关联");
     expect(graph.edges).toContainEqual({ sourceId: "center", targetId: "related", similarity: 0.35 });
   });
+
+  it("preserves saved state and affinity returned by the personalized relation endpoint", () => {
+    const center = book("center", "起点", ["ai"]);
+    const related = book("related", "关联图书", ["ai"]);
+    const graph = createBookSimilarityGraph(center, [center, related], [], new Map([
+      ["related", { isSaved: true, affinity: 0.75 }],
+    ]));
+
+    expect(graph.nodes[1]).toMatchObject({ isSaved: true, affinity: 0.75 });
+  });
 });

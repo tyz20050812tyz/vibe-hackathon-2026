@@ -6,6 +6,8 @@ export type BookSimilarityNode = {
   reasons: string[];
   relationType: RelationType | null;
   isCenter: boolean;
+  isSaved: boolean;
+  affinity: number | null;
 };
 
 export type BookSimilarityEdge = {
@@ -24,6 +26,11 @@ export type CuratedBookRelation = {
   resourceId: string;
   strength: number;
   type: RelationType;
+};
+
+export type BookNodeMetadata = {
+  isSaved: boolean;
+  affinity: number | null;
 };
 
 function overlap<T>(left: T[], right: T[]) {
@@ -46,6 +53,7 @@ export function createBookSimilarityGraph(
   center: ResourceListItem,
   catalog: ResourceListItem[],
   curatedRelations: CuratedBookRelation[] = [],
+  metadataByResourceId: ReadonlyMap<string, BookNodeMetadata> = new Map(),
 ): BookSimilarityGraph {
   const curatedByResourceId = new Map(curatedRelations.map((relation) => [relation.resourceId, relation]));
   const books = catalog.filter((resource) => resource.type === "book" && resource.id !== center.id);
@@ -60,10 +68,12 @@ export function createBookSimilarityGraph(
       ...(authors.length ? [`共同作者：${authors.join("、")}`] : []),
       ...(curated ? ["存在人工策展关联"] : []),
     ];
-    return [{ resource, similarity: score, reasons, relationType: curated?.type ?? null, isCenter: false } satisfies BookSimilarityNode];
+    const metadata = metadataByResourceId.get(resource.id);
+    return [{ resource, similarity: score, reasons, relationType: curated?.type ?? null, isCenter: false, isSaved: metadata?.isSaved ?? false, affinity: metadata?.affinity ?? null } satisfies BookSimilarityNode];
   }).sort((left, right) => right.similarity - left.similarity || left.resource.title.localeCompare(right.resource.title)).slice(0, 12);
 
-  const centerNode: BookSimilarityNode = { resource: center, similarity: 1, reasons: ["当前选择的图书"], relationType: null, isCenter: true };
+  const centerMetadata = metadataByResourceId.get(center.id);
+  const centerNode: BookSimilarityNode = { resource: center, similarity: 1, reasons: ["当前选择的图书"], relationType: null, isCenter: true, isSaved: centerMetadata?.isSaved ?? false, affinity: centerMetadata?.affinity ?? null };
   const edges: BookSimilarityEdge[] = nodes.map((node) => ({ sourceId: center.id, targetId: node.resource.id, similarity: node.similarity }));
   for (let index = 0; index < nodes.length; index += 1) {
     for (let otherIndex = index + 1; otherIndex < nodes.length; otherIndex += 1) {
