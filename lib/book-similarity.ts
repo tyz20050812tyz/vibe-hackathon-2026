@@ -1,86 +1,105 @@
+import type { ConstellationData } from "@/lib/types/constellation";
 import type { RelationType, ResourceListItem } from "@/lib/types/resources";
 
-export type BookSimilarityNode = {
+export type BookRelation = {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  strength: number;
+  type: RelationType;
+  explanation: string;
+};
+
+export type BookRelationNode = {
   resource: ResourceListItem;
-  similarity: number;
   reasons: string[];
-  relationType: RelationType | null;
+  relationTypes: RelationType[];
+  relationStrength: number | null;
   isCenter: boolean;
   isSaved: boolean;
   affinity: number | null;
 };
 
-export type BookSimilarityEdge = {
+export type BookRelationEdge = {
+  id: string;
   sourceId: string;
   targetId: string;
-  similarity: number;
-};
-
-export type BookSimilarityGraph = {
-  center: BookSimilarityNode;
-  nodes: BookSimilarityNode[];
-  edges: BookSimilarityEdge[];
-};
-
-export type CuratedBookRelation = {
-  resourceId: string;
   strength: number;
-  type: RelationType;
 };
 
-export type BookNodeMetadata = {
-  isSaved: boolean;
-  affinity: number | null;
+export type BookRelationGraph = {
+  center: BookRelationNode;
+  nodes: BookRelationNode[];
+  edges: BookRelationEdge[];
 };
 
-function overlap<T>(left: T[], right: T[]) {
-  const rightSet = new Set(right);
-  return left.filter((value) => rightSet.has(value));
-}
+const relationTypeOrder: RelationType[] = [
+  "same_theme",
+  "contrasting_view",
+  "historical_context",
+  "unexpected_bridge",
+];
 
-function tagSimilarity(left: ResourceListItem, right: ResourceListItem) {
-  const shared = overlap(left.tags.map((tag) => tag.id), right.tags.map((tag) => tag.id));
-  const total = new Set([...left.tags.map((tag) => tag.id), ...right.tags.map((tag) => tag.id)]).size;
-  return { shared, value: total ? shared.length / total : 0 };
-}
+export function createBookRelationGraph(data: ConstellationData): BookRelationGraph {
+  const nodeByResourceId = new Map(data.nodes.map((node) => [node.resource.id, node]));
+  const centerData = nodeByResourceId.get(data.centerResourceId);
+  if (!centerData) throw new Error("人工关系数据缺少中心图书。");
 
-function authorSimilarity(left: ResourceListItem, right: ResourceListItem) {
-  const normalize = (value: string) => value.trim().toLocaleLowerCase();
-  return overlap(left.creators.map(normalize), right.creators.map(normalize));
-}
-
-export function createBookSimilarityGraph(
-  center: ResourceListItem,
-  catalog: ResourceListItem[],
-  curatedRelations: CuratedBookRelation[] = [],
-  metadataByResourceId: ReadonlyMap<string, BookNodeMetadata> = new Map(),
-): BookSimilarityGraph {
-  const curatedByResourceId = new Map(curatedRelations.map((relation) => [relation.resourceId, relation]));
-  const books = catalog.filter((resource) => resource.type === "book" && resource.id !== center.id);
-  const nodes = books.flatMap((resource) => {
-    const tags = tagSimilarity(center, resource);
-    const authors = authorSimilarity(center, resource);
-    const curated = curatedByResourceId.get(resource.id);
-    const score = Math.min(1, tags.value * 0.5 + (authors.length ? 0.15 : 0) + (curated ? (curated.strength / 5) * 0.35 : 0));
-    if (score === 0) return [];
-    const reasons = [
-      ...(tags.shared.length ? [`共同主题：${tags.shared.map((tagId) => center.tags.find((tag) => tag.id === tagId)?.name).filter(Boolean).join("、")}`] : []),
-      ...(authors.length ? [`共同作者：${authors.join("、")}`] : []),
-      ...(curated ? ["存在人工策展关联"] : []),
-    ];
-    const metadata = metadataByResourceId.get(resource.id);
-    return [{ resource, similarity: score, reasons, relationType: curated?.type ?? null, isCenter: false, isSaved: metadata?.isSaved ?? false, affinity: metadata?.affinity ?? null } satisfies BookSimilarityNode];
-  }).sort((left, right) => right.similarity - left.similarity || left.resource.title.localeCompare(right.resource.title)).slice(0, 12);
-
-  const centerMetadata = metadataByResourceId.get(center.id);
-  const centerNode: BookSimilarityNode = { resource: center, similarity: 1, reasons: ["当前选择的图书"], relationType: null, isCenter: true, isSaved: centerMetadata?.isSaved ?? false, affinity: centerMetadata?.affinity ?? null };
-  const edges: BookSimilarityEdge[] = nodes.map((node) => ({ sourceId: center.id, targetId: node.resource.id, similarity: node.similarity }));
-  for (let index = 0; index < nodes.length; index += 1) {
-    for (let otherIndex = index + 1; otherIndex < nodes.length; otherIndex += 1) {
-      const value = tagSimilarity(nodes[index].resource, nodes[otherIndex].resource).value;
-      if (value >= 0.34) edges.push({ sourceId: nodes[index].resource.id, targetId: nodes[otherIndex].resource.id, similarity: value });
-    }
+  const edges: BookRelationEdge[] = data.edges.flatMap((edge) => {
+    if (edge.sourceResourceId !== data.centerResourceId && edge.targetResourceId !== data.centerResourceId) return [];
+    if (!nodeByResourceId.has(edge.sourceResourceId) || !nodeByResourceId.has(edge.targetResourceId)) return [];
+    return [{
+      id: edge.id,
+      sourceId: edge.sourceResourceId,
+      targetId: edge.targetResourceId,
+      strength: edge.strength,
+    } satisfies BookRelationEdge];
+  });
+  const relationsByResourceId = new Map<string, BookRelation[]>();
+  for (const edge of data.edges) {
+    if (edge.sourceResourceId !== data.centerResourceId && edge.targetResourceId !== data.centerResourceId) continue;
+    const neighborId = edge.sourceResourceId === data.centerResourceId
+      ? edge.targetResourceId
+      : edge.sourceResourceId;
+    if (!nodeByResourceId.has(neighborId) || neighborId === data.centerResourceId) continue;
+    const relations = relationsByResourceId.get(neighborId) ?? [];
+    relations.push({
+      id: edge.id,
+      sourceId: edge.sourceResourceId,
+      targetId: edge.targetResourceId,
+      strength: edge.strength,
+      type: edge.relationType,
+      explanation: edge.explanation,
+    });
+    relationsByResourceId.set(neighborId, relations);
   }
 
-  return { center: centerNode, nodes: [centerNode, ...nodes], edges };
+  const center: BookRelationNode = {
+    resource: centerData.resource,
+    reasons: ["当前选择的图书"],
+    relationTypes: [],
+    relationStrength: null,
+    isCenter: true,
+    isSaved: centerData.isSaved,
+    affinity: centerData.affinity,
+  };
+  const nodes = [...relationsByResourceId.entries()].flatMap(([resourceId, relations]) => {
+    const node = nodeByResourceId.get(resourceId);
+    if (!node) return [];
+    const sortedRelations = [...relations].sort((left, right) => right.strength - left.strength || left.id.localeCompare(right.id));
+    return [{
+      resource: node.resource,
+      reasons: sortedRelations.map((relation) => relation.explanation),
+      relationTypes: relationTypeOrder.filter((type) => sortedRelations.some((relation) => relation.type === type)),
+      relationStrength: sortedRelations[0]?.strength ?? null,
+      isCenter: false,
+      isSaved: node.isSaved,
+      affinity: node.affinity,
+    } satisfies BookRelationNode];
+  }).sort((left, right) =>
+    (right.relationStrength ?? 0) - (left.relationStrength ?? 0) ||
+    left.resource.title.localeCompare(right.resource.title),
+  );
+
+  return { center, nodes: [center, ...nodes], edges };
 }

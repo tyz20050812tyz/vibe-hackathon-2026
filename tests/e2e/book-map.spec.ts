@@ -68,10 +68,11 @@ test("a reader can choose a book and inspect its explainable local bubble graph"
 
   await page.getByLabel("书籍气泡关联图").getByRole("button", { name: "How to Create a Mind", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "How to Create a Mind" })).toBeVisible();
-  await expect(page.getByText("存在人工策展关联")).toBeVisible();
-  await expect(page.getByText(/^关联度 \d+%$/)).toBeVisible();
+  await expect(page.getByText("人工策展关系。")).toBeVisible();
+  await expect(page.getByText("人工关系强度 5/5")).toBeVisible();
   await expect(page.getByText("阅读偏好匹配度 75%")).toBeVisible();
   await expect(page.getByRole("button", { name: "已收藏" })).toBeDisabled();
+  await expect(page.getByLabel("书籍气泡关联图").getByRole("button", { name: "How to Create a Mind", exact: true })).toHaveAttribute("style", /brightness\(1.105\)/);
   await page.screenshot({ path: "test-results/book-map.png", fullPage: true });
 
   await page.getByRole("button", { name: "关闭图书详情" }).click();
@@ -89,11 +90,48 @@ test("a reader can choose a book and inspect its explainable local bubble graph"
     expect(bubbleBox!.y + bubbleBox!.height).toBeLessThanOrEqual(graphBox!.y + graphBox!.height);
   }
   await bubbleGraph.getByRole("button", { name: "How to Create a Mind", exact: true }).click();
-  await expect(page.getByText("存在人工策展关联")).toBeVisible();
+  await expect(page.getByText("人工策展关系。")).toBeVisible();
   await page.screenshot({ path: "test-results/book-map-mobile.png", fullPage: true });
 
   await page.goto("/resources/book-map-source/constellation");
   await expect(page.getByRole("heading", { name: "从一本书，展开它的阅读邻域" })).toBeVisible();
   await expect(page.getByLabel("书籍气泡关联图")).toBeVisible();
   await expect(page.getByText("资源星图")).toHaveCount(0);
+});
+
+test("shows the relation API error instead of creating inferred edges", async ({ page }) => {
+  await page.route(/\/api\/resources(?:\?.*)?$/, async (route) => {
+    await json(route, { data: { items: [source, related], total: 2, appliedFilters: { q: "", tag: null, languages: [], yearFrom: null, yearTo: null, types: ["book"], availabilities: [] }, appliedSort: "catalog", personalization: "catalog" }, requestId: "catalog" });
+  });
+  await page.route(/\/api\/resources\/book-map-source\/constellation/, async (route) => {
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ data: null, error: { code: "SUPABASE_UNAVAILABLE", message: "人工关系服务暂时不可用。" }, requestId: "relations" }) });
+  });
+
+  await page.goto("/book-map");
+  await page.getByRole("button", { name: /The Age of AI/ }).click();
+
+  await expect(page.getByRole("status")).toHaveText("人工关系服务暂时不可用。");
+  await expect(page.getByLabel("书籍气泡关联图")).toHaveCount(0);
+});
+
+test("keeps the latest selected book when an earlier relation request resolves later", async ({ page }) => {
+  const second = { ...related, id: "44444444-4444-4444-8444-444444444444", slug: "book-map-second", title: "Second Center" };
+  let releaseFirst: (() => void) | undefined;
+  await page.route(/\/api\/resources(?:\?.*)?$/, async (route) => {
+    await json(route, { data: { items: [source, second], total: 2, appliedFilters: { q: "", tag: null, languages: [], yearFrom: null, yearTo: null, types: ["book"], availabilities: [] }, appliedSort: "catalog", personalization: "catalog" }, requestId: "catalog" });
+  });
+  await page.route(/\/api\/resources\/book-map-source\/constellation/, async (route) => {
+    await new Promise<void>((resolve) => { releaseFirst = resolve; });
+    await json(route, { data: { centerResourceId: source.id, nodes: [{ resource: source, hop: 0, relationStrength: null, relationTypes: [], isSaved: false, affinity: null }], edges: [], hasMoreSecondHop: false, personalization: "catalog" }, requestId: "first" });
+  });
+  await page.route(/\/api\/resources\/book-map-second\/constellation/, async (route) => {
+    await json(route, { data: { centerResourceId: second.id, nodes: [{ resource: second, hop: 0, relationStrength: null, relationTypes: [], isSaved: false, affinity: null }], edges: [], hasMoreSecondHop: false, personalization: "catalog" }, requestId: "second" });
+  });
+
+  await page.goto("/book-map");
+  await page.getByRole("button", { name: /The Age of AI/ }).click();
+  await page.getByRole("button", { name: /Second Center/ }).click();
+  await expect(page.getByLabel("书籍气泡关联图").getByRole("button", { name: "Second Center", exact: true })).toBeVisible();
+  releaseFirst?.();
+  await expect(page.getByLabel("书籍气泡关联图").getByRole("button", { name: "Second Center", exact: true })).toBeVisible();
 });

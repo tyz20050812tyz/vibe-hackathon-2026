@@ -6,7 +6,7 @@ import { CircleAlert, Minus, Network, Plus, RotateCcw, Search, Sparkles, X } fro
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { SaveResourceButton } from "@/components/resources/save-resource-button";
-import { createBookSimilarityGraph, type BookSimilarityGraph, type BookSimilarityNode, type BookNodeMetadata, type CuratedBookRelation } from "@/lib/book-similarity";
+import { createBookRelationGraph, type BookRelationGraph, type BookRelationNode } from "@/lib/book-similarity";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { ApiFailure, ApiSuccess } from "@/lib/types/api";
 import type { ConstellationData } from "@/lib/types/constellation";
@@ -18,22 +18,22 @@ type LoadState = "loading" | "ready" | "error";
 type Viewport = { scale: number; x: number; y: number };
 type DragState = { kind: "canvas" | "node"; nodeId?: string; pointerId: number; lastX: number; lastY: number; moved: boolean };
 
-type ForceNode = BookSimilarityNode & { x?: number; y?: number };
-type ForceEdge = { source: string | ForceNode; target: string | ForceNode; similarity: number };
+type ForceNode = BookRelationNode & { x?: number; y?: number };
+type ForceEdge = { source: string | ForceNode; target: string | ForceNode; strength: number };
 
-function nodeRadius(node: BookSimilarityNode) {
-  return node.isCenter ? 58 : 28 + node.similarity * 25;
+function nodeRadius(node: BookRelationNode) {
+  return node.isCenter ? 58 : 28 + (node.relationStrength ?? 0) * 5;
 }
 
-function nodeTone(node: BookSimilarityNode) {
+function nodeTone(node: BookRelationNode) {
   if (node.isCenter) return "#e5c454";
-  if (node.relationType === "unexpected_bridge") return "#b28cc7";
-  if (node.relationType === "contrasting_view") return "#e87857";
-  if (node.relationType === "historical_context") return "#77b7b2";
+  if (node.relationTypes.includes("unexpected_bridge")) return "#b28cc7";
+  if (node.relationTypes.includes("contrasting_view")) return "#e87857";
+  if (node.relationTypes.includes("historical_context")) return "#77b7b2";
   return "#d3dfd9";
 }
 
-function BookDetailDialog({ node, onClose }: { node: BookSimilarityNode; onClose: () => void }) {
+function BookDetailDialog({ node, onClose }: { node: BookRelationNode; onClose: () => void }) {
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -47,7 +47,7 @@ function BookDetailDialog({ node, onClose }: { node: BookSimilarityNode; onClose
 
   return <div className="fixed inset-0 z-50 flex items-end bg-[#172d29]/65 p-4 sm:items-center sm:justify-center" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <section className="max-h-[min(42rem,calc(100vh-2rem))] w-full max-w-xl overflow-y-auto border border-[#fff8e9]/45 bg-[#172d29] p-5 text-[#fff8e9] shadow-[8px_8px_0_rgb(0_0_0_/_32%)] sm:p-7" role="dialog" aria-modal="true" aria-labelledby="book-detail-title">
-      <div className="flex items-start justify-between gap-5"><div><p className="text-xs text-[#e5c454]">{node.isCenter ? "起点图书" : `关联度 ${Math.round(node.similarity * 100)}%`}</p><h2 id="book-detail-title" className="mt-2 font-serif text-3xl leading-tight">{node.resource.title}</h2></div><button ref={closeRef} type="button" onClick={onClose} className="grid size-9 shrink-0 place-items-center border border-[#fff8e9]/45 text-[#fff8e9] hover:bg-[#fff8e9] hover:text-[#172d29]" aria-label="关闭图书详情" title="关闭"><X className="size-4" /></button></div>
+      <div className="flex items-start justify-between gap-5"><div><p className="text-xs text-[#e5c454]">{node.isCenter ? "起点图书" : `人工关系强度 ${node.relationStrength ?? 0}/5`}</p><h2 id="book-detail-title" className="mt-2 font-serif text-3xl leading-tight">{node.resource.title}</h2></div><button ref={closeRef} type="button" onClick={onClose} className="grid size-9 shrink-0 place-items-center border border-[#fff8e9]/45 text-[#fff8e9] hover:bg-[#fff8e9] hover:text-[#172d29]" aria-label="关闭图书详情" title="关闭"><X className="size-4" /></button></div>
       <p className="mt-3 text-sm text-[#d3dfd9]">{node.resource.creators.join("、") || "策展资料"}{node.resource.publishedYear ? ` · ${node.resource.publishedYear}` : ""}</p>
       <p className="mt-6 text-sm leading-7 text-[#edf2e9]">{node.resource.summary || "这本书的详细介绍尚未补充。"}</p>
       {node.resource.tags.length ? <div className="mt-5 flex flex-wrap gap-2">{node.resource.tags.map((tag) => <span key={tag.id} className="border border-[#fff8e9]/35 px-2.5 py-1 text-xs text-[#d3dfd9]">{tag.name}</span>)}</div> : null}
@@ -58,7 +58,7 @@ function BookDetailDialog({ node, onClose }: { node: BookSimilarityNode; onClose
   </div>;
 }
 
-function BubbleGraph({ graph, selectedId, onSelect }: { graph: BookSimilarityGraph; selectedId: string; onSelect: (id: string) => void }) {
+function BubbleGraph({ graph, selectedId, onSelect }: { graph: BookRelationGraph; selectedId: string; onSelect: (id: string) => void }) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
   const justDraggedNodeRef = useRef<string | null>(null);
@@ -73,9 +73,9 @@ function BubbleGraph({ graph, selectedId, onSelect }: { graph: BookSimilarityGra
       const { width, height } = element.getBoundingClientRect();
       if (width < 1 || height < 1) return;
       const nodes = graph.nodes.map((node) => ({ ...node })) as ForceNode[];
-      const links: ForceEdge[] = graph.edges.map((edge) => ({ source: edge.sourceId, target: edge.targetId, similarity: edge.similarity }));
+      const links: ForceEdge[] = graph.edges.map((edge) => ({ source: edge.sourceId, target: edge.targetId, strength: edge.strength }));
       const simulation = forceSimulation(nodes)
-        .force("link", forceLink<ForceNode, ForceEdge>(links).id((node) => node.resource.id).distance((edge) => 155 - edge.similarity * 70).strength((edge) => 0.25 + edge.similarity * 0.55))
+        .force("link", forceLink<ForceNode, ForceEdge>(links).id((node) => node.resource.id).distance((edge) => 165 - edge.strength * 14).strength((edge) => 0.25 + edge.strength * 0.12))
         .force("charge", forceManyBody().strength(-360))
         .force("collide", forceCollide<ForceNode>((node) => nodeRadius(node) + 12).iterations(2))
         .force("center", forceCenter(width / 2, height / 2))
@@ -93,14 +93,14 @@ function BubbleGraph({ graph, selectedId, onSelect }: { graph: BookSimilarityGra
     return () => { observer.disconnect(); window.cancelAnimationFrame(frame); };
   }, [graph]);
 
-  const clampPosition = (node: BookSimilarityNode, x: number, y: number) => {
+  const clampPosition = (node: BookRelationNode, x: number, y: number) => {
     const bounds = canvasRef.current?.getBoundingClientRect();
     if (!bounds) return { x, y };
     const radius = nodeRadius(node) + 12;
     return { x: Math.min(bounds.width - radius, Math.max(radius, x)), y: Math.min(bounds.height - radius, Math.max(radius, y)) };
   };
 
-  const startDrag = (event: React.PointerEvent<HTMLButtonElement>, node: BookSimilarityNode) => {
+  const startDrag = (event: React.PointerEvent<HTMLButtonElement>, node: BookRelationNode) => {
     if (event.button !== 0) return;
     event.stopPropagation();
     dragRef.current = { kind: "node", nodeId: node.resource.id, pointerId: event.pointerId, lastX: event.clientX, lastY: event.clientY, moved: false };
@@ -157,7 +157,7 @@ function BubbleGraph({ graph, selectedId, onSelect }: { graph: BookSimilarityGra
   return <div ref={canvasRef} className="relative min-h-[40rem] touch-none overflow-hidden bg-[#172d29]" aria-label="书籍气泡关联图" onPointerDown={startPan} onPointerMove={move} onPointerUp={finishDrag} onPointerCancel={finishDrag}>
     <div className="absolute left-4 top-4 z-20 flex gap-1"><button type="button" onClick={() => zoom(-0.15)} className="grid size-9 place-items-center border border-[#fff8e9]/35 bg-[#172d29] text-[#fff8e9] hover:bg-[#254a42]" aria-label="缩小气泡图" title="缩小"><Minus className="size-4" /></button><button type="button" onClick={resetView} className="grid size-9 place-items-center border border-[#fff8e9]/35 bg-[#172d29] text-[#fff8e9] hover:bg-[#254a42]" aria-label="重置气泡图视图" title="重置视图"><RotateCcw className="size-4" /></button><button type="button" onClick={() => zoom(0.15)} className="grid size-9 place-items-center border border-[#fff8e9]/35 bg-[#172d29] text-[#fff8e9] hover:bg-[#254a42]" aria-label="放大气泡图" title="放大"><Plus className="size-4" /></button></div>
     <div className="absolute inset-0 origin-center transition-transform duration-200 motion-reduce:transition-none" style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})` }}>
-      <svg className="absolute inset-0 size-full" aria-hidden="true">{graph.edges.map((edge, index) => { const source = positions.get(edge.sourceId); const target = positions.get(edge.targetId); if (!source || !target) return null; return <line key={`${edge.sourceId}-${edge.targetId}-${index}`} x1={source.x} y1={source.y} x2={target.x} y2={target.y} stroke="#d3dfd9" strokeWidth={0.7 + edge.similarity * 2} opacity={0.18 + edge.similarity * 0.4} />; })}</svg>
+      <svg className="absolute inset-0 size-full" aria-hidden="true">{graph.edges.map((edge) => { const source = positions.get(edge.sourceId); const target = positions.get(edge.targetId); if (!source || !target) return null; return <line key={edge.id} x1={source.x} y1={source.y} x2={target.x} y2={target.y} stroke="#d3dfd9" strokeWidth={0.7 + edge.strength * 0.4} opacity={0.18 + edge.strength * 0.1} />; })}</svg>
       {graph.nodes.map((node) => {
         const position = positions.get(node.resource.id);
         if (!position) return null;
@@ -178,10 +178,12 @@ export function BookMapClient({ initialSlug }: { initialSlug?: string }) {
   const [catalog, setCatalog] = useState<ResourceListItem[]>([]);
   const [query, setQuery] = useState("");
   const [center, setCenter] = useState<ResourceListItem | null>(null);
-  const [graph, setGraph] = useState<BookSimilarityGraph | null>(null);
+  const [graph, setGraph] = useState<BookRelationGraph | null>(null);
   const [selectedId, setSelectedId] = useState("");
   const [detailOpen, setDetailOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const relationRequestRef = useRef<AbortController | null>(null);
+  const relationRequestIdRef = useRef(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -203,6 +205,10 @@ export function BookMapClient({ initialSlug }: { initialSlug?: string }) {
   }, []);
 
   const loadBook = useCallback(async (book: ResourceListItem) => {
+    relationRequestRef.current?.abort();
+    const controller = new AbortController();
+    relationRequestRef.current = controller;
+    const requestId = ++relationRequestIdRef.current;
     setCenter(book);
     setSelectedId(book.id);
     setGraph(null);
@@ -210,17 +216,25 @@ export function BookMapClient({ initialSlug }: { initialSlug?: string }) {
     setMessage("");
     try {
       const session = client ? await client.auth.getSession() : { data: { session: null } };
-      const response = await fetch(`/api/resources/${encodeURIComponent(book.slug)}/constellation?depth=1`, { cache: "no-store", headers: session.data.session ? { Authorization: `Bearer ${session.data.session.access_token}` } : undefined });
+      if (controller.signal.aborted || requestId !== relationRequestIdRef.current) return;
+      const response = await fetch(`/api/resources/${encodeURIComponent(book.slug)}/constellation?depth=1`, { cache: "no-store", signal: controller.signal, headers: session.data.session ? { Authorization: `Bearer ${session.data.session.access_token}` } : undefined });
       if (!response.headers.get("content-type")?.includes("application/json")) throw new Error("人工关系暂时无法读取。");
       const body = await response.json() as ConstellationResponse;
-      const relations: CuratedBookRelation[] = response.ok && body.data ? body.data.edges.map((edge) => ({ resourceId: edge.sourceResourceId === book.id ? edge.targetResourceId : edge.sourceResourceId, strength: edge.strength, type: edge.relationType })) : [];
-      const metadata = new Map<string, BookNodeMetadata>(response.ok && body.data ? body.data.nodes.map((node) => [node.resource.id, { isSaved: node.isSaved, affinity: node.affinity }]) : []);
-      setGraph(createBookSimilarityGraph(book, catalog, relations, metadata));
-    } catch {
-      setGraph(createBookSimilarityGraph(book, catalog));
-      setMessage("人工关系暂时无法读取，当前只按主题和作者计算关联度。");
+      if (!response.ok || !body.data) {
+        const message = "error" in body ? body.error.message : "人工关系暂时无法读取。";
+        throw new Error(message);
+      }
+      if (controller.signal.aborted || requestId !== relationRequestIdRef.current) return;
+      setGraph(createBookRelationGraph(body.data));
+    } catch (error) {
+      if (controller.signal.aborted || requestId !== relationRequestIdRef.current) return;
+      setMessage(error instanceof Error ? error.message : "人工关系暂时无法读取。");
+    } finally {
+      if (relationRequestRef.current === controller) relationRequestRef.current = null;
     }
-  }, [catalog, client]);
+  }, [client]);
+
+  useEffect(() => () => relationRequestRef.current?.abort(), []);
 
   useEffect(() => {
     if (!initialSlug || state !== "ready" || center) return;
@@ -240,13 +254,13 @@ export function BookMapClient({ initialSlug }: { initialSlug?: string }) {
   const notice = message || (initialSlugUnsupported ? "关联图目前只支持目录中的图书作为起点。" : "");
 
   return <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
-    <div className="max-w-3xl"><p className="text-sm text-[#a23b2c]">书籍关联图</p><h1 className="mt-2 font-serif text-4xl leading-tight">从一本书，展开它的阅读邻域</h1><p className="mt-4 max-w-2xl text-sm leading-6 text-[#52625d]">气泡距离由共同主题、共同作者和人工策展关系共同计算；它表示本项目目录内的内容关联度，不是论文引文相似度。</p></div>
+    <div className="max-w-3xl"><p className="text-sm text-[#a23b2c]">书籍关联图</p><h1 className="mt-2 font-serif text-4xl leading-tight">从一本书，展开它的阅读邻域</h1><p className="mt-4 max-w-2xl text-sm leading-6 text-[#52625d]">每一条连线都对应资源目录中的人工策展关系；节点大小与线条粗细反映关系强度。</p></div>
     <section className="mt-8 border-y border-[#254a42]/20 py-6"><label htmlFor="book-map-search" className="text-sm text-[#45554f]">输入图书名称</label><div className="mt-2 flex max-w-xl border border-[#254a42] bg-[#fffdf5]"><Search className="m-3.5 size-5 text-[#254a42]" /><input id="book-map-search" value={query} onChange={(event) => setQuery(event.target.value)} className="min-w-0 flex-1 bg-transparent py-3 outline-none" placeholder="例如：The Age of AI" autoComplete="off" /></div>{state === "loading" ? <p className="mt-3 text-sm text-[#52625d]">正在准备图书目录...</p> : null}{state === "error" ? <p className="mt-3 text-sm text-[#a23b2c]" role="status">{notice}</p> : null}{state === "ready" ? <div className="mt-3 flex flex-wrap gap-2" aria-label="匹配图书">{matches.map((book) => <button key={book.id} type="button" onClick={() => void loadBook(book)} className={`border px-3 py-2 text-left text-sm ${center?.id === book.id ? "border-[#254a42] bg-[#254a42] text-[#fff8e9]" : "border-[#254a42]/30 text-[#254a42] hover:bg-[#e4e7d4]"}`}><span className="block font-medium">{book.title}</span><span className="mt-1 block text-xs opacity-75">{book.creators.join("、")}</span></button>)}</div> : null}</section>
     {notice && state !== "error" ? <p className="mt-4 text-sm text-[#a23b2c]" role="status">{notice}</p> : null}
     {!center && state === "ready" ? <section className="mt-8 border border-dashed border-[#254a42]/30 px-6 py-16 text-center"><Network className="mx-auto size-8 text-[#a23b2c]" /><h2 className="mt-4 font-serif text-3xl">先选一本书</h2><p className="mt-3 text-sm text-[#52625d]">从目录中选择起点后，关联气泡会在这里展开。</p></section> : null}
     {center && graph ? <section className="mt-8 overflow-hidden border border-[#172d29] bg-[#172d29]"><BubbleGraph graph={graph} selectedId={selectedId} onSelect={(id) => { setSelectedId(id); setDetailOpen(true); }} /></section> : null}
     {center && graph && graph.nodes.length === 1 ? <section className="mt-6 flex items-start gap-3 border-l-2 border-[#a23b2c] pl-4"><CircleAlert className="mt-0.5 size-5 text-[#a23b2c]" /><p className="text-sm leading-6 text-[#52625d]">目录中暂时没有可解释的关联图书。可以换一本书，或继续浏览这本书的详情。</p></section> : null}
-    <div className="mt-8 flex items-start gap-3 border-t border-[#254a42]/20 pt-5 text-sm leading-6 text-[#52625d]"><Sparkles className="mt-0.5 size-4 text-[#a23b2c]" /><p>每个气泡仅代表本地目录中已有图书；不会生成目录外书目，也不会将关联度伪装为学术引文指标。</p></div>
+    <div className="mt-8 flex items-start gap-3 border-t border-[#254a42]/20 pt-5 text-sm leading-6 text-[#52625d]"><Sparkles className="mt-0.5 size-4 text-[#a23b2c]" /><p>每个气泡仅代表本地目录中已有资源；不会生成目录外书目，也不会将人工关系伪装为学术引文指标。</p></div>
     {detailOpen && selectedNode ? <BookDetailDialog node={selectedNode} onClose={() => setDetailOpen(false)} /> : null}
   </main>;
 }
