@@ -1,5 +1,5 @@
 import { CatalogHeader } from "@/components/resources/catalog-header";
-import { ConstellationClient } from "@/components/resources/constellation-client";
+import { BookMapClient } from "@/components/resources/book-map-client";
 
 export default async function ConstellationPage({
   params,
@@ -7,5 +7,5 @@ export default async function ConstellationPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  return <div className="min-h-screen bg-[#fff8e9] text-[#172d29]"><CatalogHeader /><ConstellationClient slug={slug} /></div>;
+  return <div className="min-h-screen bg-[#fff8e9] text-[#172d29]"><CatalogHeader /><BookMapClient initialSlug={slug} /></div>;
 }

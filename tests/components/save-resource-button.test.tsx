@@ -24,4 +24,11 @@ describe("SaveResourceButton", () => {
       note: "留给下次阅读",
     });
   });
+
+  it("renders an already-saved resource without offering a duplicate save", () => {
+    render(<SaveResourceButton resourceId="11111111-1111-4111-8111-111111111111" isSaved />);
+
+    expect(screen.getByRole("button", { name: "已收藏" }).disabled).toBe(true);
+    expect(screen.queryByRole("button", { name: "收藏到书架" })).toBeNull();
+  });
 });
