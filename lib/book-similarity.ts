@@ -24,7 +24,9 @@ export type BookRelationEdge = {
   id: string;
   sourceId: string;
   targetId: string;
+  type: RelationType;
   strength: number;
+  direction: "outbound" | "inbound";
 };
 
 export type BookRelationGraph = {
@@ -52,7 +54,9 @@ export function createBookRelationGraph(data: ConstellationData): BookRelationGr
       id: edge.id,
       sourceId: edge.sourceResourceId,
       targetId: edge.targetResourceId,
+      type: edge.relationType,
       strength: edge.strength,
+      direction: edge.direction,
     } satisfies BookRelationEdge];
   });
   const relationsByResourceId = new Map<string, BookRelation[]>();

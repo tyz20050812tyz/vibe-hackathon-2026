@@ -45,8 +45,8 @@ describe("createBookRelationGraph", () => {
 
     expect(graph.nodes.map((node) => node.resource.id)).toEqual(["center", "related"]);
     expect(graph.edges).toEqual([
-      { id: "relation-one", sourceId: "center", targetId: "related", strength: 5 },
-      { id: "relation-two", sourceId: "related", targetId: "center", strength: 3 },
+      { id: "relation-one", sourceId: "center", targetId: "related", type: "same_theme", strength: 5, direction: "outbound" },
+      { id: "relation-two", sourceId: "related", targetId: "center", type: "unexpected_bridge", strength: 3, direction: "inbound" },
     ]);
     expect(graph.nodes[1]).toMatchObject({
       isSaved: true,
