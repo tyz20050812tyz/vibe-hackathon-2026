@@ -14,6 +14,15 @@ import type {
 
 export const dynamic = "force-dynamic";
 
+function demoRecordsUnavailable(id: string) {
+  return failure(
+    "RESOURCE_NOT_FOUND",
+    "演练记录接口仅在开发环境可用。",
+    404,
+    id,
+  );
+}
+
 const createDemoRecordSchema = z.object({
   content: z.string().trim().min(1, "请输入内容。").max(500, "内容不能超过 500 个字符。"),
 });
@@ -50,6 +59,10 @@ function failure(
 export async function GET() {
   const id = requestId();
 
+  if (process.env.NODE_ENV !== "development") {
+    return demoRecordsUnavailable(id);
+  }
+
   try {
     return success(await listDemoRecords(), id);
   } catch {
@@ -59,6 +72,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const id = requestId();
+
+  if (process.env.NODE_ENV !== "development") {
+    return demoRecordsUnavailable(id);
+  }
+
   let payload: unknown;
 
   try {

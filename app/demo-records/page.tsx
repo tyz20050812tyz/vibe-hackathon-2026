@@ -1,3 +1,5 @@
+import { notFound } from "next/navigation";
+
 import { DemoRecordsTemplate } from "@/components/demo-records-template";
 import { listDemoRecords } from "@/lib/services/demo-records";
 
@@ -18,6 +20,10 @@ async function getInitialRecords() {
 }
 
 export default async function DemoRecordsPage() {
+  if (process.env.NODE_ENV !== "development") {
+    notFound();
+  }
+
   const { records, error } = await getInitialRecords();
   return <DemoRecordsTemplate initialRecords={records} initialError={error} />;
 }
