@@ -174,6 +174,7 @@ export async function discover(
   input: DiscoverRequestInput,
   accessToken?: string,
   requesterIdentity = "anonymous",
+  allowModelNarration = true,
 ): Promise<DiscoverData> {
   const { supabase, userId } = await authenticatedClient(accessToken);
   const { data: origin, error: originError } = await supabase
@@ -227,7 +228,7 @@ export async function discover(
   }
 
   const templateNarration = selected?.relation.explanation;
-  const narration = selected
+  const narration = selected && allowModelNarration
     ? await narrateWithDeepSeek({
       originResourceId: origin.id,
       targetResourceId: selected.target.id,
@@ -260,7 +261,9 @@ export async function discover(
       identity: userId ?? requesterIdentity,
       authenticated: Boolean(userId),
     })
-    : undefined;
+    : selected
+      ? { narration: selected.relation.explanation, source: "template" as const }
+      : undefined;
 
   return {
     originResourceId: origin.id,

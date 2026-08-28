@@ -1,22 +1,39 @@
 import { apiFailure, apiSuccess } from "@/lib/api-response";
 import { discoverRequestSchema } from "@/lib/schemas/resources";
 import { discover, DiscoveryError } from "@/lib/services/discovery";
-
-function requesterIdentity(request: Request) {
-  // Forwarded headers are meaningful only behind the explicitly configured proxy.
-  if (process.env.TRUST_PROXY !== "true") return "anonymous";
-  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return forwarded ? `ip:${forwarded}` : "anonymous";
-}
+import {
+  claimDiscoveryRequest,
+  requesterIdentity,
+} from "@/lib/services/discovery-request-limits";
 
 export async function POST(request: Request) {
   const requestId = crypto.randomUUID();
+  let body: string;
+  try {
+    body = await request.text();
+  } catch {
+    return apiFailure("INVALID_JSON", "请求内容必须是 JSON。", requestId);
+  }
+  const requestBytes = new TextEncoder().encode(body).byteLength;
+  if (requestBytes > 8 * 1024) {
+    return apiFailure("VALIDATION_ERROR", "发现请求不能超过 8 KB。", requestId);
+  }
+
+  const identity = requesterIdentity(request);
+  const claim = await claimDiscoveryRequest(identity, requestBytes);
+  if (claim.status === "rate_limited") {
+    const response = apiFailure(
+      "RATE_LIMITED",
+      "发现请求过于频繁，请稍后重试。",
+      requestId,
+      { privateContext: true },
+    );
+    response.headers.set("Retry-After", String(claim.retryAfterSeconds));
+    return response;
+  }
+
   let payload: unknown;
   try {
-    const body = await request.text();
-    if (new TextEncoder().encode(body).byteLength > 8 * 1024) {
-      return apiFailure("VALIDATION_ERROR", "发现请求不能超过 8 KB。", requestId);
-    }
     payload = JSON.parse(body);
   } catch {
     return apiFailure("INVALID_JSON", "请求内容必须是 JSON。", requestId);
@@ -42,7 +59,11 @@ export async function POST(request: Request) {
   const responseOptions = { privateContext: hasDiscoveryContext };
 
   try {
-    return apiSuccess(await discover(parsed.data, token, requesterIdentity(request)), requestId, responseOptions);
+    return apiSuccess(
+      await discover(parsed.data, token, identity, claim.status === "permitted"),
+      requestId,
+      responseOptions,
+    );
   } catch (error) {
     if (error instanceof DiscoveryError) {
       return apiFailure(error.code, error.message, requestId, responseOptions);
