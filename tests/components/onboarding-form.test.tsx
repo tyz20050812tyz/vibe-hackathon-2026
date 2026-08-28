@@ -38,4 +38,23 @@ describe("OnboardingForm", () => {
     fireEvent.click(screen.getByLabelText(/我同意将上述兴趣标签/));
     expect(save.disabled).toBe(false);
   });
+
+  it("shows a retryable error when the catalog tags cannot be loaded", async () => {
+    let catalogAttempts = 0;
+    vi.stubGlobal("fetch", vi.fn((input: string) => {
+      if (input === "/api/reader-profile") {
+        return Promise.resolve(new Response(JSON.stringify({ data: { status: "incomplete", preferences: null } }), { status: 200 }));
+      }
+      catalogAttempts += 1;
+      return Promise.resolve(new Response(JSON.stringify(catalogAttempts === 1
+        ? { data: null, error: { message: "目录暂时不可用。" } }
+        : { data: { items: tags.map((tag) => ({ tags: [tag] })) } }), { status: catalogAttempts === 1 ? 503 : 200 }));
+    }));
+
+    render(<OnboardingForm />);
+
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("目录暂时不可用。"));
+    fireEvent.click(screen.getByRole("button", { name: "重试" }));
+    await waitFor(() => expect(screen.getByLabelText("设计")).toBeTruthy());
+  });
 });

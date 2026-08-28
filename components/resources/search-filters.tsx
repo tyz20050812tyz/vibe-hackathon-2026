@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, SlidersHorizontal } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { parseSearchFilters, serializeSearchFilters } from "@/lib/catalog-filters";
@@ -36,10 +36,15 @@ export function SearchFilters() {
       <FilterGroup title="可读状态">{options.availabilities.map(([value, label]) => <CheckOption key={value} label={label} checked={current.availabilities?.includes(value as Availability) ?? false} onChange={() => toggle("availabilities", value)} />)}</FilterGroup>
     </div>
     <div className="mt-5 flex flex-wrap items-end gap-3">
-      <label className="text-sm text-[#52625d]">最早年份<input type="number" min={1000} max={2100} defaultValue={current.yearFrom ?? ""} onBlur={(event) => update({ yearFrom: event.target.value ? Number(event.target.value) : undefined })} className="mt-1 block w-28 border border-[#254a42]/30 bg-[#fffdf5] px-2 py-1.5" /></label>
-      <label className="text-sm text-[#52625d]">最晚年份<input type="number" min={1000} max={2100} defaultValue={current.yearTo ?? ""} onBlur={(event) => update({ yearTo: event.target.value ? Number(event.target.value) : undefined })} className="mt-1 block w-28 border border-[#254a42]/30 bg-[#fffdf5] px-2 py-1.5" /></label>
+      <YearInput key={`from-${current.yearFrom ?? ""}`} label="最早年份" initialValue={current.yearFrom?.toString() ?? ""} onCommit={(value) => update({ yearFrom: value ? Number(value) : undefined })} />
+      <YearInput key={`to-${current.yearTo ?? ""}`} label="最晚年份" initialValue={current.yearTo?.toString() ?? ""} onCommit={(value) => update({ yearTo: value ? Number(value) : undefined })} />
     </div>
   </details>;
+}
+
+function YearInput({ label, initialValue, onCommit }: { label: string; initialValue: string; onCommit: (value: string) => void }) {
+  const [value, setValue] = useState(initialValue);
+  return <label className="text-sm text-[#52625d]">{label}<input type="number" min={1000} max={2100} value={value} onChange={(event) => setValue(event.target.value)} onBlur={() => onCommit(value)} className="mt-1 block w-28 border border-[#254a42]/30 bg-[#fffdf5] px-2 py-1.5" /></label>;
 }
 
 function FilterGroup({ title, children }: { title: string; children: React.ReactNode }) {
