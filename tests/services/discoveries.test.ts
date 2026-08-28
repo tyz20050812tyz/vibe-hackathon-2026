@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   createPublicClient: vi.fn(),
   createAuthenticatedClient: vi.fn(),
+  narrateWithDeepSeek: vi.fn(),
   readDiscoveryContext: vi.fn(),
 }));
 
@@ -13,6 +14,9 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 vi.mock("@/lib/discovery-context", () => ({
   readDiscoveryContext: mocks.readDiscoveryContext,
+}));
+vi.mock("@/lib/services/deepseek-narration", () => ({
+  narrateWithDeepSeek: mocks.narrateWithDeepSeek,
 }));
 
 import { discover } from "../../lib/services/discovery";
@@ -83,6 +87,10 @@ async function run(relations: unknown[], input: Record<string, unknown> = {}, op
 describe("new discoveries service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.narrateWithDeepSeek.mockImplementation(async (input) => ({
+      narration: input.relationExplanation,
+      source: "template",
+    }));
     mocks.readDiscoveryContext.mockReturnValue(null);
   });
 
@@ -183,5 +191,23 @@ describe("new discoveries service", () => {
         narrationSource: "template",
       },
     });
+  });
+
+  it("does not invoke DeepSeek when the entry limiter is unavailable", async () => {
+    const publicValue = client([relation("r1", "unexpected_bridge", 5)]);
+    mocks.createPublicClient.mockReturnValue(publicValue.value);
+
+    const result = await discover(
+      { originResourceId: originId, mode: "surprise" },
+      undefined,
+      "anonymous",
+      false,
+    );
+
+    expect(result.recommendation).toMatchObject({
+      narration: "Explanation r1",
+      narrationSource: "template",
+    });
+    expect(mocks.narrateWithDeepSeek).not.toHaveBeenCalled();
   });
 });
