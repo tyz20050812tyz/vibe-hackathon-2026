@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#183a34" />
+    <title>书外之遇 | 项目介绍</title>
+    <style>
+      :root {
+        --ink: #183a34;
+        --paper: #fff9eb;
+        --sage: #dce6db;
+        --moss: #6e8574;
+        --coral: #d95d43;
+        --gold: #e5bd4f;
+        --line: rgba(24, 58, 52, 0.22);
+        --serif: "Iowan Old Style", "Songti SC", "STSong", "Noto Serif CJK SC", serif;
+        --sans: "Avenir Next", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; background: var(--ink); }
+      body { color: var(--ink); font-family: var(--sans); overflow: hidden; }
+      button { font: inherit; }
+      .deck { height: 100vh; min-height: 560px; position: relative; overflow: hidden; }
+      .slide {
+        display: none;
+        height: 100%;
+        min-height: 560px;
+        position: relative;
+        overflow: hidden;
+        padding: clamp(34px, 5.2vw, 82px) clamp(30px, 7vw, 124px);
+        background: var(--paper);
+      }
+      .slide.active { display: grid; animation: reveal 520ms both; }
+      .slide::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0.34;
+        background-image: radial-gradient(rgba(24, 58, 52, 0.2) 0.55px, transparent 0.6px);
+        background-size: 7px 7px;
+        mix-blend-mode: multiply;
+      }
+      .slide > * { position: relative; z-index: 1; }
+      .eyebrow { margin: 0; color: var(--coral); font-size: 12px; font-weight: 800; line-height: 1.3; letter-spacing: 0; text-transform: uppercase; }
+      h1, h2, h3, p { margin-top: 0; }
+      h1, h2, h3 { font-family: var(--serif); font-weight: 650; letter-spacing: 0; }
+      h1 { font-size: clamp(54px, 8vw, 132px); line-height: 0.94; }
+      h2 { font-size: clamp(38px, 5vw, 76px); line-height: 1.05; }
+      h3 { font-size: clamp(20px, 2vw, 31px); line-height: 1.2; }
+      .lede { max-width: 680px; font-size: clamp(16px, 1.6vw, 23px); line-height: 1.65; }
+      .tiny { font-size: 12px; line-height: 1.55; }
+      .topline { align-items: center; display: flex; justify-content: space-between; gap: 24px; }
+      .brand { color: var(--ink); font-family: var(--serif); font-size: clamp(20px, 2vw, 29px); line-height: 1; }
+      .page { color: var(--moss); font-size: 13px; font-weight: 800; }
+      .rule { background: var(--line); height: 1px; margin: 16px 0 0; }
+      .cover { align-content: space-between; background: var(--ink); color: var(--paper); }
+      .cover::before { background-image: radial-gradient(rgba(255, 249, 235, 0.18) 0.55px, transparent 0.6px); mix-blend-mode: screen; }
+      .cover .brand { color: var(--paper); }
+      .cover .page { color: var(--sage); }
+      .cover-main { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr); align-items: end; gap: 7vw; }
+      .cover h1 { margin: 18px 0 26px; max-width: 800px; }
+      .cover h1 em { color: var(--gold); font-style: normal; }
+      .cover .lede { color: var(--sage); }
+      .constellation { aspect-ratio: 1; width: min(31vw, 440px); min-width: 290px; position: relative; margin: auto 0 0 auto; }
+      .constellation span { position: absolute; display: grid; place-items: center; border-radius: 50%; border: 1px solid rgba(255,249,235,0.45); color: var(--ink); font-family: var(--serif); text-align: center; }
+      .constellation span::after { content: ""; position: absolute; height: 1px; background: rgba(255,249,235,0.42); transform-origin: left center; z-index: -1; }
+      .constellation .core { inset: 35%; background: var(--gold); font-size: 16px; }
+      .constellation .n1 { width: 24%; height: 24%; top: 0; left: 18%; background: var(--sage); font-size: 13px; }
+      .constellation .n1::after { width: 140%; transform: rotate(56deg); }
+      .constellation .n2 { width: 20%; height: 20%; top: 18%; right: 0; background: var(--coral); color: var(--paper); font-size: 12px; }
+      .constellation .n2::after { width: 122%; transform: rotate(132deg); }
+      .constellation .n3 { width: 19%; height: 19%; bottom: 0; left: 8%; background: #a7b7ad; font-size: 12px; }
+      .constellation .n3::after { width: 150%; transform: rotate(-42deg); }
+      .constellation .n4 { width: 16%; height: 16%; bottom: 18%; right: 4%; background: #f7ecd1; font-size: 11px; }
+      .constellation .n4::after { width: 180%; transform: rotate(198deg); }
+      .cover-footer { display: flex; justify-content: space-between; align-items: end; color: var(--sage); gap: 20px; }
+      .cover-footer p { margin: 0; }
+
+      .problem { grid-template-rows: auto 1fr; }
+      .problem-body { display: grid; grid-template-columns: 0.9fr 1.1fr; align-items: center; gap: 7vw; }
+      .problem h2 { margin: 14px 0 0; }
+      .bookwall { height: min(52vh, 490px); border: 1px solid var(--line); display: grid; grid-template-columns: repeat(6, 1fr); gap: 9px; padding: 16px; align-items: end; overflow: hidden; background: #f4ead1; }
+      .book { align-self: end; border: 1px solid rgba(24,58,52,0.3); box-shadow: 3px 4px 0 rgba(24,58,52,0.16); min-height: 44%; padding: 8px 5px; writing-mode: vertical-rl; font-family: var(--serif); font-size: clamp(13px, 1.4vw, 20px); }
+      .book:nth-child(1) { height: 62%; background: #d5e1d4; }
+      .book:nth-child(2) { height: 83%; background: #e6bf53; }
+      .book:nth-child(3) { height: 51%; background: #cb6c52; color: var(--paper); }
+      .book:nth-child(4) { height: 72%; background: #b7c8bc; }
+      .book:nth-child(5) { height: 91%; background: #e8e0c8; }
+      .book:nth-child(6) { height: 58%; background: #779183; }
+      .problem-copy { align-self: center; }
+      .statement { border-left: 4px solid var(--coral); padding-left: 20px; max-width: 540px; font-family: var(--serif); font-size: clamp(24px, 3vw, 43px); line-height: 1.35; }
+      .statement strong { color: var(--coral); font-weight: 650; }
+
+      .thesis { background: var(--sage); grid-template-rows: auto 1fr; }
+      .thesis-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: clamp(20px, 3vw, 52px); align-items: center; }
+      .thesis-card { min-height: 300px; border-top: 2px solid var(--ink); padding-top: 18px; }
+      .thesis-card .number { color: var(--coral); font-family: var(--serif); font-size: 36px; line-height: 1; }
+      .thesis-card p { color: #35564e; font-size: 15px; line-height: 1.75; }
+      .thesis-card.highlight { background: var(--ink); color: var(--paper); padding: 30px; border: 0; min-height: 360px; transform: rotate(-2deg); box-shadow: 9px 9px 0 rgba(24,58,52,0.22); }
+      .thesis-card.highlight p { color: var(--sage); }
+      .thesis-card.highlight .number { color: var(--gold); }
+
+      .journey { grid-template-rows: auto 1fr; }
+      .journey-layout { display: grid; grid-template-columns: 1fr 1.35fr; gap: 6vw; align-items: center; }
+      .journey h2 { margin: 12px 0 20px; }
+      .steps { border-top: 1px solid var(--line); }
+      .step { display: grid; grid-template-columns: 56px 1fr; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+      .step b { color: var(--coral); font-family: var(--serif); font-size: 28px; font-weight: 600; }
+      .step h3 { margin: 0 0 5px; font-size: 21px; }
+      .step p { margin: 0; color: #4b645c; font-size: 14px; line-height: 1.55; }
+      .map { min-height: min(50vh, 480px); background: var(--ink); position: relative; overflow: hidden; border: 1px solid var(--ink); }
+      .map::before, .map::after { content: ""; position: absolute; inset: 0; background-image: linear-gradient(rgba(255,249,235,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,249,235,0.07) 1px, transparent 1px); background-size: 42px 42px; }
+      .map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+      .map-node { position: absolute; display: grid; place-items: center; border-radius: 50%; text-align: center; font-family: var(--serif); color: var(--ink); box-shadow: 4px 5px 0 rgba(0,0,0,0.2); }
+      .map-node.center { width: 128px; height: 128px; top: 37%; left: 38%; background: var(--gold); font-size: 16px; }
+      .map-node.one { width: 90px; height: 90px; top: 12%; left: 13%; background: var(--sage); font-size: 13px; }
+      .map-node.two { width: 82px; height: 82px; top: 18%; right: 11%; background: var(--coral); color: var(--paper); font-size: 13px; }
+      .map-node.three { width: 84px; height: 84px; bottom: 11%; left: 17%; background: #a6bbb0; font-size: 13px; }
+      .map-node.four { width: 72px; height: 72px; bottom: 12%; right: 16%; background: #f1dfb4; font-size: 12px; }
+      .map-label { position: absolute; bottom: 18px; left: 21px; color: var(--sage); font-size: 12px; }
+
+      .engine { background: #f3e8cf; grid-template-rows: auto 1fr; }
+      .engine-main { display: grid; grid-template-columns: minmax(0, 1fr) 190px minmax(0, 1fr); align-items: center; gap: clamp(20px, 3.5vw, 60px); }
+      .engine-box { min-height: 310px; padding: 30px; border: 1px solid var(--line); background: var(--paper); }
+      .engine-box.curated { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+      .engine-box p { font-size: 15px; line-height: 1.7; }
+      .engine-box.curated p { color: var(--sage); }
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+      .chips span { padding: 7px 10px; border: 1px solid currentColor; font-size: 12px; }
+      .engine-plus { display: grid; place-items: center; width: 130px; height: 130px; margin: auto; border-radius: 50%; border: 1px solid var(--ink); color: var(--coral); font-family: var(--serif); font-size: 74px; line-height: 1; }
+      .engine-foot { text-align: center; font-family: var(--serif); font-size: clamp(21px, 2.4vw, 35px); }
+
+      .proof { background: var(--ink); color: var(--paper); grid-template-rows: auto 1fr; }
+      .proof::before { background-image: radial-gradient(rgba(255,249,235,0.15) 0.55px, transparent 0.6px); mix-blend-mode: screen; }
+      .proof .brand { color: var(--paper); }
+      .proof .page { color: var(--sage); }
+      .proof .rule { background: rgba(255,249,235,0.26); }
+      .proof-layout { display: grid; grid-template-columns: 1fr 1.4fr; gap: 6vw; align-items: center; }
+      .proof h2 { margin: 14px 0 18px; }
+      .proof .lede { color: var(--sage); }
+      .proof-stats { display: flex; gap: 26px; margin-top: 28px; }
+      .proof-stat { border-left: 2px solid var(--gold); padding-left: 12px; }
+      .proof-stat strong { color: var(--gold); display: block; font-family: var(--serif); font-size: 36px; font-weight: 600; line-height: 1; }
+      .proof-stat span { color: var(--sage); font-size: 12px; }
+      .demo { position: relative; margin: 0; border: 1px solid rgba(255,249,235,0.35); box-shadow: 8px 8px 0 rgba(0,0,0,0.25); background: #0c211d; }
+      .demo video { display: block; width: 100%; max-height: min(57vh, 510px); object-fit: cover; }
+      .demo figcaption { display: flex; justify-content: space-between; gap: 16px; padding: 10px 13px; color: var(--sage); font-size: 12px; }
+
+      .build { grid-template-rows: auto 1fr; }
+      .build-layout { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 7vw; align-items: center; }
+      .stack { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+      .stack-item { min-height: 132px; padding: 19px; border: 1px solid var(--line); background: #fffdf6; }
+      .stack-item:nth-child(2) { background: var(--sage); }
+      .stack-item:nth-child(3) { background: #f2dfb3; }
+      .stack-item:nth-child(4) { background: #e8b5a7; }
+      .stack-item b { display: block; font-family: var(--serif); font-size: 25px; font-weight: 600; }
+      .stack-item span { color: #405d54; display: block; margin-top: 6px; font-size: 12px; line-height: 1.55; }
+      .build-callout { padding: clamp(24px, 3vw, 48px); background: var(--ink); color: var(--paper); transform: rotate(1.5deg); box-shadow: 10px 10px 0 var(--coral); }
+      .build-callout h2 { margin: 0 0 18px; }
+      .build-callout p { color: var(--sage); font-size: 16px; line-height: 1.7; }
+
+      .closing { align-content: space-between; background: var(--coral); color: var(--paper); }
+      .closing::before { background-image: radial-gradient(rgba(255,249,235,0.24) 0.55px, transparent 0.6px); mix-blend-mode: screen; }
+      .closing .brand, .closing .page { color: var(--paper); }
+      .closing h2 { max-width: 1030px; margin: 0; font-size: clamp(52px, 7.2vw, 118px); }
+      .closing h2 em { color: var(--gold); font-style: normal; }
+      .closing-foot { display: flex; justify-content: space-between; align-items: end; gap: 30px; }
+      .closing-foot p { margin: 0; max-width: 560px; color: #ffe9d6; font-size: 18px; line-height: 1.65; }
+      .closing-mark { font-family: var(--serif); font-size: clamp(26px, 3vw, 45px); text-align: right; }
+
+      .controls { position: fixed; z-index: 5; right: clamp(18px, 2.3vw, 36px); bottom: clamp(16px, 2.2vw, 32px); display: flex; align-items: center; gap: 8px; }
+      .controls button { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid rgba(24,58,52,0.35); background: rgba(255,249,235,0.88); color: var(--ink); cursor: pointer; font-size: 20px; }
+      .controls button:hover, .controls button:focus-visible { outline: none; background: var(--gold); }
+      .controls button:disabled { opacity: 0.42; cursor: default; }
+      .controls .counter { min-width: 52px; color: var(--ink); background: rgba(255,249,235,0.88); border: 1px solid rgba(24,58,52,0.35); padding: 10px 8px; font-size: 12px; font-weight: 800; text-align: center; }
+      .progress { position: fixed; z-index: 6; left: 0; right: 0; bottom: 0; height: 5px; background: rgba(24,58,52,0.18); }
+      .progress i { display: block; height: 100%; width: 12.5%; background: var(--gold); transition: width 260ms ease; }
+      .cover ~ .controls button, .proof ~ .controls button { background: rgba(255,249,235,0.9); }
+
+      @keyframes reveal { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: translateX(0); } }
+      @media (prefers-reduced-motion: reduce) { .slide.active, .progress i { animation: none; transition: none; } }
+      @media (max-width: 760px), (max-height: 650px) {
+        .deck, .slide { min-height: 0; }
+        .slide { overflow-y: auto; padding-bottom: 74px; }
+        .cover-main, .problem-body, .journey-layout, .proof-layout, .build-layout { grid-template-columns: 1fr; gap: 28px; }
+        .cover-main { align-items: start; }
+        .constellation { width: min(60vw, 320px); min-width: 0; margin: 0 auto; }
+        .bookwall { height: 260px; }
+        .thesis-grid { grid-template-columns: 1fr; gap: 14px; }
+        .thesis-card, .thesis-card.highlight { min-height: 0; padding: 16px; transform: none; }
+        .engine-main { grid-template-columns: 1fr; gap: 16px; }
+        .engine-plus { width: 70px; height: 70px; font-size: 46px; }
+        .map { min-height: 330px; }
+        .proof-stats { margin-top: 16px; }
+        .demo video { max-height: 310px; }
+        .closing-foot { align-items: start; flex-direction: column; }
+        .closing-mark { text-align: left; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="deck" aria-label="书外之遇项目介绍">
+      <section class="slide cover active" data-slide="1" aria-label="封面">
+        <div class="topline"><div class="brand">书外之遇</div><div class="page">01 / 08</div></div>
+        <div class="cover-main">
+          <div>
+            <p class="eyebrow">Vibe Coding Hackathon 2026</p>
+            <h1>从一本到<br />意料<em>之外</em>的下一本。</h1>
+            <p class="lede">一间让阅读线索持续生长的数字图书馆。以人工策展关系为起点，为每位读者打开可解释的发现路径。</p>
+          </div>
+          <div class="constellation" aria-label="资源关系星图示意">
+            <span class="core">一本书</span><span class="n1">城市</span><span class="n2">AI</span><span class="n3">记忆</span><span class="n4">设计</span>
+          </div>
+        </div>
+        <div class="cover-footer"><p class="tiny">PROJECT INTRODUCTION</p><p class="tiny">2026</p></div>
+      </section>
+
+      <section class="slide problem" data-slide="2" aria-label="问题">
+        <div><div class="topline"><div class="brand">书外之遇</div><div class="page">02 / 08</div></div><div class="rule"></div></div>
+        <div class="problem-body">
+          <div class="bookwall" aria-label="书籍目录示意"><div class="book">技术</div><div class="book">社会</div><div class="book">艺术</div><div class="book">文学</div><div class="book">城市</div><div class="book">设计</div></div>
+          <div class="problem-copy"><p class="eyebrow">The Problem</p><h2>目录帮你找到已知，<br />却很难抵达未知。</h2><p class="statement">当阅读被切成孤立的搜索结果，真正有价值的<strong>跨主题联想</strong>被留在了书架之间。</p><p class="lede">传统检索以“命中”为终点；我们希望把它变成一次有方向、可回看的阅读出发。</p></div>
+        </div>
+      </section>
+
+      <section class="slide thesis" data-slide="3" aria-label="解决方案">
+        <div><div class="topline"><div class="brand">书外之遇</div><div class="page">03 / 08</div></div><div class="rule"></div></div>
+        <div class="thesis-grid">
+          <article class="thesis-card"><div class="number">01</div><h3>不是推荐列表</h3><p>每一个下一本都保留“为什么相连”的人工策展说明。读者拥有判断权，而不是被黑盒推动。</p></article>
+          <article class="thesis-card highlight"><div class="number">02</div><h3>让偶然可抵达</h3><p>从延展主题、对照观点、历史背景到意外桥接，关系比相似度更能带来阅读的惊喜。</p></article>
+          <article class="thesis-card"><div class="number">03</div><h3>让轨迹可沉淀</h3><p>收藏、笔记与阅读偏好形成个人档案。每次回访，都能从上一次停下的线索继续。</p></article>
+        </div>
+      </section>
+
+      <section class="slide journey" data-slide="4" aria-label="用户旅程">
+        <div><div class="topline"><div class="brand">书外之遇</div><div class="page">04 / 08</div></div><div class="rule"></div></div>
+        <div class="journey-layout">
+          <div><p class="eyebrow">Reader Journey</p><h2>一次阅读，<br />一条自己的路。</h2><div class="steps"><div class="step"><b>01</b><div><h3>发现线索</h3><p>按主题、语言、年份、类型与可读状态检索公共目录。</p></div></div><div class="step"><b>02</b><div><h3>理解关系</h3><p>在资源详情与 Book Map 中查看不同资源为什么相连。</p></div></div><div class="step"><b>03</b><div><h3>偏离一点</h3><p>从当前读物跨到一个意料之外、但说得通的下一站。</p></div></div><div class="step"><b>04</b><div><h3>留下轨迹</h3><p>收藏、做笔记、设置偏好，让下一次探索更像自己。</p></div></div></div></div>
+          <div class="map" aria-label="Book Map 资源关系示意"><svg viewBox="0 0 600 480" aria-hidden="true"><path d="M115 105 L300 245 L500 112 M300 245 L132 385 M300 245 L495 370" fill="none" stroke="#dce6db" stroke-width="2" stroke-dasharray="9 7" opacity=".7" /></svg><span class="map-node center">生成<br />艺术</span><span class="map-node one">城市<br />记忆</span><span class="map-node two">认知<br />心理</span><span class="map-node three">偶然<br />阅读</span><span class="map-node four">视觉<br />设计</span><span class="map-label">BOOK MAP / RELATIONSHIP EXPLORER</span></div>
+        </div>
+      </section>
+
+      <section class="slide engine" data-slide="5" aria-label="产品引擎">
+        <div><div class="topline"><div class="brand">书外之遇</div><div class="page">05 / 08</div></div><div class="rule"></div></div>
+        <div>
+          <div class="engine-main">
+            <article class="engine-box curated"><p class="eyebrow">Foundation</p><h2>人工策展<br />的关系网络</h2><p>资源关系由编辑维护，明确区分同一主题、对照观点、历史语境和意外连接。</p><div class="chips"><span>可解释</span><span>可控质量</span><span>不依赖模型</span></div></article>
+            <div class="engine-plus" aria-label="与">+</div>
+            <article class="engine-box"><p class="eyebrow">Amplifier</p><h2>AI 阅读引导<br />的恰当介入</h2><p>在稳固的关系基础上，AI 用自然语言讲清“这一次偏离为什么值得”，并带有超时、缓存、限流与降级保护。</p><div class="chips"><span>个性化排序</span><span>叙事解释</span><span>安全回退</span></div></article>
+          </div>
+          <p class="engine-foot">AI 不是替代策展者，而是让<strong>策展关系更容易被读懂</strong>。</p>
+        </div>
+      </section>
+
+      <section class="slide proof" data-slide="6" aria-label="产品演示">
+        <div><div class="topline"><div class="brand">书外之遇</div><div class="page">06 / 08</div></div><div class="rule"></div></div>
+        <div class="proof-layout">
+          <div><p class="eyebrow">Working Product</p><h2>不是概念，<br />是一条可走通的阅读路径。</h2><p class="lede">从资源目录、关系图、意外发现，到个人书架与阅读偏好，产品主链路已经完整可演示。</p><div class="proof-stats"><div class="proof-stat"><strong>4</strong><span>关系类型</span></div><div class="proof-stat"><strong>8+</strong><span>核心产品页面</span></div><div class="proof-stat"><strong>1</strong><span>可回看的阅读档案</span></div></div></div>
+          <figure class="demo"><video controls muted preload="metadata" aria-label="书外之遇产品演示视频"><source src="展示视频/演示视频.mp4" type="video/mp4" />你的浏览器不支持视频播放。</video><figcaption><span>产品演示录像</span><span>目录 → 关系 → 发现 → 书架</span></figcaption></figure>
+        </div>
+      </section>
+
+      <section class="slide build" data-slide="7" aria-label="技术实现">
+        <div><div class="topline"><div class="brand">书外之遇</div><div class="page">07 / 08</div></div><div class="rule"></div></div>
+        <div class="build-layout">
+          <div><p class="eyebrow">Built To Last</p><h2>把“灵感”做成<br />可协作、可演进的产品。</h2><div class="stack"><div class="stack-item"><b>Next.js 16</b><span>App Router · React 19 · TypeScript</span></div><div class="stack-item"><b>Supabase</b><span>PostgreSQL · Auth · RLS</span></div><div class="stack-item"><b>策展图谱</b><span>资源、标签、关系与索引</span></div><div class="stack-item"><b>可靠 AI</b><span>校验 · 缓存 · 限流 · 熔断降级</span></div></div></div>
+          <aside class="build-callout"><p class="eyebrow">Engineering Principle</p><h2>先让主流程在没有 AI 时也成立。</h2><p>把不稳定性隔离在增强层，用户始终能获得来自人工策展的高质量阅读连接。</p></aside>
+        </div>
+      </section>
+
+      <section class="slide closing" data-slide="8" aria-label="结束">
+        <div class="topline"><div class="brand">书外之遇</div><div class="page">08 / 08</div></div>
+        <h2>把每一次阅读，<br />带向<em>更远一点</em>的地方。</h2>
+        <div class="closing-foot"><p>从一本到意料之外的下一本。<br />让数字图书馆不只回答“有什么”，更能邀请读者继续“往哪里去”。</p><div class="closing-mark">书外之遇<br /><span class="tiny">THANK YOU</span></div></div>
+      </section>
+    </main>
+
+    <nav class="controls" aria-label="幻灯片控制"><button type="button" id="prev" aria-label="上一页" title="上一页">&#8592;</button><span class="counter" id="counter" aria-live="polite">01 / 08</span><button type="button" id="next" aria-label="下一页" title="下一页">&#8594;</button></nav>
+    <div class="progress" aria-hidden="true"><i id="progress"></i></div>
+    <script>
+      const slides = [...document.querySelectorAll('.slide')];
+      const previous = document.querySelector('#prev');
+      const next = document.querySelector('#next');
+      const counter = document.querySelector('#counter');
+      const progress = document.querySelector('#progress');
+      let index = 0;
+
+      function showSlide(nextIndex) {
+        index = Math.max(0, Math.min(slides.length - 1, nextIndex));
+        slides.forEach((slide, position) => slide.classList.toggle('active', position === index));
+        previous.disabled = index === 0;
+        next.disabled = index === slides.length - 1;
+        counter.textContent = `${String(index + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
+        progress.style.width = `${((index + 1) / slides.length) * 100}%`;
+        const video = slides[index].querySelector('video');
+        if (video) video.pause();
+      }
+
+      previous.addEventListener('click', () => showSlide(index - 1));
+      next.addEventListener('click', () => showSlide(index + 1));
+      window.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowRight' || event.key === 'PageDown' || event.key === ' ') { event.preventDefault(); showSlide(index + 1); }
+        if (event.key === 'ArrowLeft' || event.key === 'PageUp') { event.preventDefault(); showSlide(index - 1); }
+        if (event.key === 'Home') showSlide(0);
+        if (event.key === 'End') showSlide(slides.length - 1);
+      });
+      showSlide(0);
+    </script>
+  </body>
+</html>
